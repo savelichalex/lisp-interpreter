@@ -123,7 +123,7 @@ function isVariable(exp) {
 }
 
 function isSymbol(exp) {
-    return /^[\d\w\?!\-]+$/gi.test(exp);
+    return /^\w[\d\w\?!\-]+$/gi.test(exp);
 }
 
 function isQuoted(exp) {
