@@ -20,6 +20,13 @@ function isPair(pair) {
     return pair.toString() === '[cons]';
 }
 
+function list() {
+	return Object.keys(arguments).map(key => arguments[key]).map(i => cons(i, null)).reduceRight((prev, cur) => {
+		cur.cdr = prev;
+		return cur;
+	});
+}
+
 function cond(arr) {
     let length = arr.length;
     for(let i = 0; i < length; i++) {
@@ -131,7 +138,7 @@ function isQuoted(exp) {
 }
 
 function textOfQuotation(exp) {
-    return cdr(car(exp));
+    return car(cdr(exp));
 }
 
 function isTaggedList(exp, tag) {
@@ -142,3 +149,64 @@ function isTaggedList(exp, tag) {
     }
     return false;
 }
+
+function isAssignment(exp) {
+	return isTaggedList(exp, 'set!');
+}
+
+function assignmentVariable(exp) {
+	return car(cdr(exp));
+}
+
+function assignmentValue(exp) {
+	return car(cdr(cdr(exp)));
+}
+
+function isDefinition(exp) {
+	return isTaggedList(exp, 'define');
+}
+
+function definitionVariable(exp) {
+	return isSymbol(car(cdr(exp))) ? car(cdr(exp)) : car(car(cdr(exp)));
+}
+
+function definitionValue(exp) {
+	return isSymbol(car(cdr(exp))) ? car(cdr(cdr(exp))) : makeLambda(cdr(car(cdr(exp))), cdr(cdr(exp)));
+}
+
+function isLambda(exp) {
+	return isTaggedList(exp, 'lambda');
+}
+
+function lambdaParameters(exp) {
+	return car(cdr(exp));
+}
+
+function lambdaBody(exp) {
+	return cdr(cdr(exp));
+}
+
+function makeLambda(parameters, body) {
+	return cons('lambda', cons(parameters, body));
+}
+
+function isIf(exp) {
+	return isTaggedList(exp, 'if');
+}
+
+function ifPredicate(exp) {
+	return car(cdr(exp));
+}
+
+function ifConsequent(exp) {
+	return car(cdr(cdr(exp)));
+}
+
+function ifAlternative(exp) {
+	if(cdr(cdr(cdr(exp))) === null) {
+		return car(cdr(cdr(cdr(exp))));
+	} else {
+		return 'false';
+	}
+}
+
