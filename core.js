@@ -447,3 +447,15 @@ function defineVariable(variable, value, env) {
 	}
 	return scan(frameVariables(frame), frameValues(frame));
 }
+
+//
+
+function setupEnvironment() {
+	let initialEnv = extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
+	defineVariable('true', true, initialEnv);
+	defineVariable('false', false, initialEnv);
+	return initialEnv;
+}
+
+const globalEnvironment = setupEnvironment();
+
