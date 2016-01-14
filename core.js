@@ -35,6 +35,14 @@ function list() {
 	});
 }
 
+function listLength(l, len = 0) {
+	if(l === null) {
+		return len;
+	} else {
+		return listLength(cdr(l), len + 1);
+	}
+}
+
 function cond(arr) {
     let length = arr.length;
     for(let i = 0; i < length; i++) {
@@ -62,14 +70,14 @@ function eval(exp, env) {
     ]);
 }
 
-function apply(procedure, arguments) {
+function apply(procedure, args) {
     cond([
-        () => isPrimitiveProcedure(procedure), () => applyPrimitiveProcedure(procedure, arguments),
+        () => isPrimitiveProcedure(procedure), () => applyPrimitiveProcedure(procedure, args),
         () => isCompoundProcedure(procedure), () => evalSequence(
                                                         procedureBody(procedure),
                                                         extendEnvironment(
                                                             procedureParameters(procedure),
-                                                            arguments,
+                                                            args,
                                                             procedureEnvironment(procedure)
                                                         )
                                                     ),
@@ -270,7 +278,7 @@ function firstOperand(ops) {
 	return car(ops);
 }
 
-function restOperands(ops) {
+function restOperand(ops) {
 	return cdr(ops);
 }
 
@@ -357,6 +365,10 @@ function firstFrame(env) {
 
 const theEmptyEnvironment = cons(null, null);
 
+function isEmptyList(l) {
+	return l.toString() === '[cons]' && car(l) === null && cdr(l) === null;
+}
+
 function makeFrame(variables, values) {
 	return cons(variables, values);
 }
@@ -374,3 +386,64 @@ function addBindingToFrame(variable, value, frame) {
 	setCdr(frame, cons(value, cdr(frame)));
 }
 
+function extendEnvironment(vars, vals, baseEnv) {
+	if(listLength(vars) === listLength(vals)) {
+		return cons(makeFrame(vars, vals), baseEnv);
+	} else {
+		if(listLength(vars) < listLength(vals)) {
+			throw new Error('Given little count of arguments', vars, vals);
+		} else {
+			throw new Error('Given too much arguments', vars, vals);
+		}
+	}
+}
+
+function lookupVariableValue(variable, env) {
+	function envLoop(env) {
+		function scan(vars, vals) {
+			return cond([
+				() => vars === null, () => envLoop(enclosingEnvironment(env)),
+				() => variable === car(vars), () => car(vals),
+				() => true, () => scan(cdr(vars), cdr(vals))
+			])
+		}
+		if(isEmptyList(env)) {
+			throw new Error('Unbound variable', variable);
+		} else {
+			let frame = firstFrame(env);
+			return scan(frameVariables(frame), frameValues(frame));
+		}
+	}
+	return envLoop(env);
+}
+
+function setVariableValue(variable, value, env) {
+	function envLoop(env) {
+		function scan(vars, vals) {
+			return cond([
+				() => vars === null, () => envLoop(enclosingEnvironment(env)),
+				() => variable === car(vars), () => setCar(vals, value),
+				() => true, () => scan(cdr(vars), cdr(vals))
+			])
+		}
+		if(isEmptyList(env)) {
+			throw new Error('Unbound variable', variable);
+		} else {
+			let frame = firstFrame(env);
+			return scan(frameVariables(frame), frameValues(frame));
+		}
+	}
+	return envLoop(env);
+}
+
+function defineVariable(variable, value, env) {
+	let frame = firstFrame(env);
+	function scan(vars, vals) {
+		return cond([
+			() => vars === null, () => addBindingToFrame(variable, value, frame),
+			() => variable === car(vars), () => setCar(vals, value),
+			() => true, () => scan(cdr(vars), cdr(vals))
+		]);
+	}
+	return scan(frameVariables(frame), frameValues(frame));
+}
