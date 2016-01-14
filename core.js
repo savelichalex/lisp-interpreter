@@ -1,64 +1,6 @@
-function cons(first, second) {
-    return {
-        car: first,
-        cdr: second,
-        toString() {
-            return '[cons]'
-        }
-    }
-}
+'use strict';
 
-function car(pair) {
-    return pair.car;
-}
-
-function cdr(pair) {
-    return pair.cdr;
-}
-
-function setCar(pair, car) {
-	pair.car = car;
-}
-
-function setCdr(pair, cdr) {
-	pair.cdr = cdr;
-}
-
-function isPair(pair) {
-    return pair.toString() === '[cons]';
-}
-
-function list() {
-	return Object.keys(arguments).map(key => arguments[key]).map(i => cons(i, null)).reduceRight((prev, cur) => {
-		setCdr(cur, prev);
-		return cur;
-	});
-}
-
-function listLength(l, len = 0) {
-	if(l === null) {
-		return len;
-	} else {
-		return listLength(cdr(l), len + 1);
-	}
-}
-
-function listToArray(list) {
-	let arr = [];
-	let item = list;
-	while(car(item) !== null) {
-		arr.push(item);
-		item = cdr(item);
-	}
-}
-
-function map(proc, list) {
-	if(list === null) {
-		return list;
-	} else {
-		return cons(proc(car(list)), map(proc, cdr(list)));
-	}
-}
+import * as List from './list';
 
 function cond(arr) {
     let length = arr.length;
@@ -71,7 +13,7 @@ function cond(arr) {
     }
 }
 
-function eval(exp, env) {
+function _eval(exp, env) {
     cond([
         () => isSelfEvaluating(exp), () => exp,
         () => isVariable(exp), () => lookupVariableValue(exp, env),
@@ -81,8 +23,8 @@ function eval(exp, env) {
         () => isIf(exp), () => evalIf(exp, env),
         () => isLambda(exp), () => makeProcedure(lambdaParameters(exp), lambdaBody(exp), env),
         () => isBegin(exp), () => evalSequence(beginActions(exp), env),
-        () => isCond(exp), () => eval(condToIf(exp), env),
-        () => isApplication(exp), () => apply(eval(operator(exp), env), listOfValues(operands(exp), env)),
+        () => isCond(exp), () => _eval(condToIf(exp), env),
+        () => isApplication(exp), () => apply(_eval(operator(exp), env), listOfValues(operands(exp), env)),
         () => true, () => {throw new Error('Eval: Unknown expression', exp)}
     ]);
 }
@@ -106,35 +48,35 @@ function listOfValues(exps, env, arr = []) {
     if(isNoOperands(exps)) {
         return arr;
     } else {
-        arr.push(eval(firstOperand(exps), env));
+        arr.push(_eval(firstOperand(exps), env));
         listOfValues(restOperand(exps), env, arr);
     }
 }
 
 function evalIf(exp, env) {
-    if(isTrue(eval(ifPredicate(exp), env))) {
-        eval(ifConsequent(exp), env);
+    if(isTrue(_eval(ifPredicate(exp), env))) {
+        _eval(ifConsequent(exp), env);
     } else {
-        eval(ifAlternative(exp), env);
+        _eval(ifAlternative(exp), env);
     }
 }
 
 function evalSequence(exps, env) {
     if(isLastExp(exps)) {
-        eval(firstExp(exps), env);
+        _eval(firstExp(exps), env);
     } else {
-        eval(firstExp(exps), env);
+        _eval(firstExp(exps), env);
         evalSequence(restExps(exps), env);
     }
 }
 
 function evalAssignment(exp, env) {
-    setVariableValue(assignmentVariable(exp), eval(assignmentValue(exp), env), env);
+    setVariableValue(assignmentVariable(exp), _eval(assignmentValue(exp), env), env);
     return 'ok';
 }
 
 function evalDefinition(exp, env) {
-    defineVariable(definitionVariable(exp), eval(definitionValue(exp), env), env);
+    defineVariable(definitionVariable(exp), _eval(definitionValue(exp), env), env);
     return 'ok';
 }
 
@@ -150,7 +92,7 @@ function isNumber(exp) {
     return /^\d+$/gi.test(exp);
 }
 
-function isString(exp) {
+function isString() {
     return false; //TODO: check strings in lisp
 }
 
@@ -167,12 +109,12 @@ function isQuoted(exp) {
 }
 
 function textOfQuotation(exp) {
-    return car(cdr(exp));
+    return List.car(List.cdr(exp));
 }
 
 function isTaggedList(exp, tag) {
-    if(isPair(exp)) {
-        if(car(exp) === tag) {
+    if(List.isPair(exp)) {
+        if(List.car(exp) === tag) {
             return true;
         }
     }
@@ -184,11 +126,11 @@ function isAssignment(exp) {
 }
 
 function assignmentVariable(exp) {
-	return car(cdr(exp));
+	return List.car(List.cdr(exp));
 }
 
 function assignmentValue(exp) {
-	return car(cdr(cdr(exp)));
+	return List.car(List.cdr(List.cdr(exp)));
 }
 
 function isDefinition(exp) {
@@ -196,11 +138,11 @@ function isDefinition(exp) {
 }
 
 function definitionVariable(exp) {
-	return isSymbol(car(cdr(exp))) ? car(cdr(exp)) : car(car(cdr(exp)));
+	return isSymbol(List.car(List.cdr(exp))) ? List.car(List.cdr(exp)) : List.car(List.car(List.cdr(exp)));
 }
 
 function definitionValue(exp) {
-	return isSymbol(car(cdr(exp))) ? car(cdr(cdr(exp))) : makeLambda(cdr(car(cdr(exp))), cdr(cdr(exp)));
+	return isSymbol(List.car(List.cdr(exp))) ? List.car(List.cdr(List.cdr(exp))) : makeLambda(List.cdr(List.car(List.cdr(exp))), List.cdr(List.cdr(exp)));
 }
 
 function isLambda(exp) {
@@ -208,15 +150,15 @@ function isLambda(exp) {
 }
 
 function lambdaParameters(exp) {
-	return car(cdr(exp));
+	return List.car(List.cdr(exp));
 }
 
 function lambdaBody(exp) {
-	return cdr(cdr(exp));
+	return List.cdr(List.cdr(exp));
 }
 
 function makeLambda(parameters, body) {
-	return cons('lambda', cons(parameters, body));
+	return List.cons('lambda', List.cons(parameters, body));
 }
 
 function isIf(exp) {
@@ -224,23 +166,23 @@ function isIf(exp) {
 }
 
 function ifPredicate(exp) {
-	return car(cdr(exp));
+	return List.car(List.cdr(exp));
 }
 
 function ifConsequent(exp) {
-	return car(cdr(cdr(exp)));
+	return List.car(List.cdr(List.cdr(exp)));
 }
 
 function ifAlternative(exp) {
-	if(cdr(cdr(cdr(exp))) === null) {
-		return car(cdr(cdr(cdr(exp))));
+	if(List.cdr(List.cdr(List.cdr(exp))) === null) {
+		return List.car(List.cdr(List.cdr(List.cdr(exp))));
 	} else {
 		return 'false';
 	}
 }
 
 function makeIf(predicate, consequent, alternative) {
-	return list('if', predicate, consequent, alternative);
+	return List.list('if', predicate, consequent, alternative);
 }
 
 function isBegin(exp) {
@@ -248,23 +190,23 @@ function isBegin(exp) {
 }
 
 function beginActions(exp) {
-	return cdr(exp);
+	return List.cdr(exp);
 }
 
 function isLastExp(seq) {
-	return cdr(seq) === null;
+	return List.cdr(seq) === null;
 }
 
 function firstExp(seq) {
-	return car(seq);
+	return List.car(seq);
 }
 
 function restExps(seq) {
-	return cdr(seq);
+	return List.cdr(seq);
 }
 
 function makeBegin(seq) {
-	return cons('begin', seq);
+	return List.cons('begin', seq);
 }
 
 function sequenceToExp(seq) {
@@ -276,15 +218,15 @@ function sequenceToExp(seq) {
 }
 
 function isApplication(exp) {
-	return isPair(exp);
+	return List.isPair(exp);
 }
 
 function operator(exp) {
-	return car(exp);
+	return List.car(exp);
 }
 
 function operands(exp) {
-	return cdr(exp);
+	return List.cdr(exp);
 }
 
 function isNoOperands(ops) {
@@ -292,11 +234,11 @@ function isNoOperands(ops) {
 }
 
 function firstOperand(ops) {
-	return car(ops);
+	return List.car(ops);
 }
 
 function restOperand(ops) {
-	return cdr(ops);
+	return List.cdr(ops);
 }
 
 function isCond(exp) {
@@ -304,7 +246,7 @@ function isCond(exp) {
 }
 
 function condClauses(exp) {
-	return cdr(exp);
+	return List.cdr(exp);
 }
 
 function isCondElseClause(clause) {
@@ -312,11 +254,11 @@ function isCondElseClause(clause) {
 }
 
 function condPredicate(clause) {
-	return car(clause);
+	return List.car(clause);
 }
 
 function condActions(clause) {
-	return cdr(clause);
+	return List.cdr(clause);
 }
 
 function condToIf(exp) {
@@ -327,8 +269,8 @@ function expandClauses(clauses) {
 	if(clauses === null) {
 		return 'false';
 	} else {
-		let first = car(clauses);
-		let rest = cdr(clauses);
+		let first = List.car(clauses);
+		let rest = List.cdr(clauses);
 		if(isCondElseClause(first)) {
 			if(rest === null) {
 				return sequenceToExp(condActions(first))
@@ -354,7 +296,7 @@ function isNull(x) {
 }
 
 function makeProcedure(parameters, body, env) {
-	return list('procedure', parameters, body, env);
+	return List.list('procedure', parameters, body, env);
 }
 
 function isCompoundProcedure(p) {
@@ -362,56 +304,56 @@ function isCompoundProcedure(p) {
 }
 
 function procedureParameters(p) {
-	return car(cdr(p));
+	return List.car(List.cdr(p));
 }
 
 function procedureBody(p) {
-	return car(cdr(cdr(p)));
+	return List.car(List.cdr(List.cdr(p)));
 }
 
 function procedureEnvironment(p) {
-	return car(cdr(cdr(cdr(p))));
+	return List.car(List.cdr(List.cdr(List.cdr(p))));
 }
 
 
 //Environment
 
 function enclosingEnvironment(env) {
-	return cdr(env);
+	return List.cdr(env);
 }
 
 function firstFrame(env) {
-	return car(env);
+	return List.car(env);
 }
 
-const theEmptyEnvironment = cons(null, null);
+const theEmptyEnvironment = List.cons(null, null);
 
 function isEmptyList(l) {
-	return l.toString() === '[cons]' && car(l) === null && cdr(l) === null;
+	return l.toString() === '[cons]' && List.car(l) === null && List.cdr(l) === null;
 }
 
 function makeFrame(variables, values) {
-	return cons(variables, values);
+	return List.cons(variables, values);
 }
 
 function frameVariables(frame) {
-	return car(frame);
+	return List.car(frame);
 }
 
 function frameValues(frame) {
-	return cdr(frame);
+	return List.cdr(frame);
 }
 
 function addBindingToFrame(variable, value, frame) {
-	setCar(frame, cons(variable, car(frame)));
-	setCdr(frame, cons(value, cdr(frame)));
+	List.setCar(frame, List.cons(variable, List.car(frame)));
+	List.setCdr(frame, List.cons(value, List.cdr(frame)));
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
-	if(listLength(vars) === listLength(vals)) {
-		return cons(makeFrame(vars, vals), baseEnv);
+	if(List.listLength(vars) === List.listLength(vals)) {
+		return List.cons(makeFrame(vars, vals), baseEnv);
 	} else {
-		if(listLength(vars) < listLength(vals)) {
+		if(List.listLength(vars) < List.listLength(vals)) {
 			throw new Error('Given little count of arguments', vars, vals);
 		} else {
 			throw new Error('Given too much arguments', vars, vals);
@@ -424,8 +366,8 @@ function lookupVariableValue(variable, env) {
 		function scan(vars, vals) {
 			return cond([
 				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === car(vars), () => car(vals),
-				() => true, () => scan(cdr(vars), cdr(vals))
+				() => variable === List.car(vars), () => List.car(vals),
+				() => true, () => scan(List.cdr(vars), List.cdr(vals))
 			])
 		}
 		if(isEmptyList(env)) {
@@ -443,8 +385,8 @@ function setVariableValue(variable, value, env) {
 		function scan(vars, vals) {
 			return cond([
 				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === car(vars), () => setCar(vals, value),
-				() => true, () => scan(cdr(vars), cdr(vals))
+				() => variable === List.car(vars), () => List.setCar(vals, value),
+				() => true, () => scan(List.cdr(vars), List.cdr(vals))
 			])
 		}
 		if(isEmptyList(env)) {
@@ -462,8 +404,8 @@ function defineVariable(variable, value, env) {
 	function scan(vars, vals) {
 		return cond([
 			() => vars === null, () => addBindingToFrame(variable, value, frame),
-			() => variable === car(vars), () => setCar(vals, value),
-			() => true, () => scan(cdr(vars), cdr(vals))
+			() => variable === List.car(vars), () => List.setCar(vals, value),
+			() => true, () => scan(List.cdr(vars), List.cdr(vals))
 		]);
 	}
 	return scan(frameVariables(frame), frameValues(frame));
@@ -485,24 +427,149 @@ function isPrimitiveProcedure(proc) {
 }
 
 function primitiveImplementation(proc) {
-	return car(cdr(proc));
+	return List.car(List.cdr(proc));
 }
 
 const primitiveProcedures = list(
-	list('car', car),
-	list('cdr', cdr),
-	list('cons', cons),
-	list('null?', isNull)
+	List.list('List.car', List.car),
+	List.list('List.cdr', List.cdr),
+	List.list('List.cons', List.cons),
+	List.list('null?', isNull)
 );
 
 function primitiveProcedureNames() {
-	return map(car, primitiveProcedures);
+	return List.map(List.car, primitiveProcedures);
 }
 
 function primitiveProcedureObjects() {
-	return map(proc => list('primitive', car(cdr(proc))), primitiveProcedures);
+	return List.map(proc => List.list('primitive', List.car(List.cdr(proc))), primitiveProcedures);
 }
 
 function applyPrimitiveProcedure(proc, args) {
-	return proc.apply(listToArray(args));
+	return proc.apply(List.listToArray(args));
 }
+
+//REPL
+
+const inputPrompt = ";;; Input Eval:";
+const outputPrompt = ";;; Output Eval:";
+
+function driverLoop() {
+
+}
+
+const LIST_OPEN = 'LIST_OPEN';
+const LIST_CLOSE = 'LIST_CLOSE';
+const NUMBER = 'NUMBER';
+const SYMBOL = 'SYMBOL';
+
+//Lexer
+function* tokenizerGenerator(input) {
+	const length = input.length;
+	let currentToken = '';
+	let currentType;
+	for(let i = 0; i < length; i++) {
+		const char = input[i];
+		if(char === '(') {
+			currentToken = '';
+			yield {type: LIST_OPEN};
+		} else if(char === ')') {
+			currentToken = '';
+			yield {type: LIST_CLOSE};
+		} else if(/^\d$/.test(char)) {
+			if(currentToken === '' || currentType === NUMBER) {
+				currentType = NUMBER;
+			}
+			currentToken = currentToken + char;
+		} else if(/^[^\(\)\s]$/.test(char)) {
+			currentType = STRING;
+		} else if(/^\s$/.test(char)) {
+			if(currentType && currentToken !== '') {
+				yield {
+					type: currentType,
+					token: currentToken
+				}
+			} else {
+				currentToken = '';
+			}
+		}
+	}
+}
+
+class Node {
+	constructor(parent) {
+		this.parent = parent;
+		this.childs = [];
+	}
+
+	addChild(child) {
+		this.childs.push(child);
+	}
+}
+
+class SymbolToken {
+	constructor(value) {
+		this.value = value;
+	}
+}
+
+class NumberToken {
+	constructor(value) {
+		this.value = value;
+	}
+}
+
+function syntaxer(input) {
+	const tokenizer = tokenizerGenerator(input);
+
+	const tree = makeAST(tokenizer);
+	return astToLists(tree);
+}
+
+function makeAST(tokenizer) {
+	let currentNode = new Node();
+	while(true) {
+		const { value, done } = tokenizer.next();
+		if(done) {
+			break;
+		} else {
+			const { type, token } = value;
+			switch(type) {
+				case LIST_OPEN:
+					const newNode = new Node(currentNode);
+					currentNode.addChild(newNode);
+					currentNode = newNode;
+					break;
+				case LIST_CLOSE:
+					currentNode = currentNode.parent;
+					break;
+				case NUMBER:
+					currentNode.addChild(new NumberToken(token));
+					break;
+				case SYMBOL:
+					currentNode.addChild(new SymbolToken(token));
+			}
+		}
+	}
+	return currentNode;
+}
+
+function astToLists(tree) {
+	function scan(node) {
+		function scanChild(child) {
+			child.map(c => List.cons(scan(c), null)).reduceRight((prev, cur) => {
+				List.setCdr(cur, prev);
+				return cdr;
+			})
+		}
+		if(node instanceof SYMBOL) {
+			return node.value + '';
+		} else if(node instanceof NUMBER) {
+			return +node.value;
+		} else if(node instanceof Node) {
+			return scanChild(node.childs);
+		}
+	}
+	return scan(tree);
+}
+
