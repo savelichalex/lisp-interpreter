@@ -16,7 +16,8 @@ const rl = readline.createInterface({
 console.log('Lisp interpretator written on JavaScript');
 console.log(inputPrompt);
 rl.on('line', line => {
-	console.log(outputPrompt, interpretate(line));
+	const res = interpretate(line);
+	console.log(outputPrompt, res[res.length ? res.length - 1 : 0]);
 	console.log(inputPrompt);
 }).on('close', () => {
 	console.log('REPL closing.');

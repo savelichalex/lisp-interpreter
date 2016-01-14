@@ -46,10 +46,11 @@ export function listLength(l, len = 0) {
 export function listToArray(list) {
 	let arr = [];
 	let item = list;
-	while(car(item) !== null) {
-		arr.push(item);
+	while(item !== null) {
+		arr.push(car(item));
 		item = cdr(item);
 	}
+	return arr;
 }
 
 export function map(proc, list) {
@@ -57,5 +58,14 @@ export function map(proc, list) {
 		return list;
 	} else {
 		return cons(proc(car(list)), map(proc, cdr(list)));
+	}
+}
+
+export function forEach(proc, list) {
+	if(list === null) {
+		return;
+	} else {
+		proc(car(list));
+		return forEach(proc, cdr(list));
 	}
 }

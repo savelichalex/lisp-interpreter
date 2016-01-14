@@ -5,7 +5,8 @@ import * as List from './list';
 import { cond } from './util';
 
 export function _eval(exp, env) {
-    cond([
+	//console.log(exp);
+    return cond([
         () => isSelfEvaluating(exp), () => exp,
         () => isVariable(exp), () => lookupVariableValue(exp, env),
         () => isQuoted(exp), () => textOfQuotation(exp),
@@ -16,12 +17,12 @@ export function _eval(exp, env) {
         () => isBegin(exp), () => evalSequence(beginActions(exp), env),
         () => isCond(exp), () => _eval(condToIf(exp), env),
         () => isApplication(exp), () => apply(_eval(operator(exp), env), listOfValues(operands(exp), env)),
-        () => true, () => {throw new Error('Eval: Unknown expression', exp)}
+        () => true, () => {throw new Error('Eval: Unknown expression' + exp)}
     ]);
 }
 
 function apply(procedure, args) {
-    cond([
+    return cond([
         () => isPrimitiveProcedure(procedure), () => applyPrimitiveProcedure(procedure, args),
         () => isCompoundProcedure(procedure), () => evalSequence(
                                                         procedureBody(procedure),
@@ -40,7 +41,7 @@ function listOfValues(exps, env, arr = []) {
         return arr;
     } else {
         arr.push(_eval(firstOperand(exps), env));
-        listOfValues(restOperand(exps), env, arr);
+        return listOfValues(restOperand(exps), env, arr);
     }
 }
 
@@ -72,19 +73,19 @@ function evalDefinition(exp, env) {
 }
 
 function isSelfEvaluating(exp) {
-    cond([
+    return cond([
         () => isNumber(exp), () => true,
-        () => isString(exp), () => true,
+        //() => isString(exp), () => true,
         () => true, () => false
     ]);
 }
 
 function isNumber(exp) {
-    return /^\d+$/gi.test(exp);
+    return typeof exp === 'number';
 }
 
 function isString() {
-    return false; //TODO: check strings in lisp
+    return typeof exp === 'string'; //TODO: check strings in lisp
 }
 
 function isVariable(exp) {
@@ -92,7 +93,7 @@ function isVariable(exp) {
 }
 
 function isSymbol(exp) {
-    return /^\w[\d\w\?!\-]+$/gi.test(exp);
+    return typeof exp === 'string';
 }
 
 function isQuoted(exp) {
@@ -408,7 +409,9 @@ const primitiveProcedures = List.list(
 	List.list('List.car', List.car),
 	List.list('List.cdr', List.cdr),
 	List.list('List.cons', List.cons),
-	List.list('null?', isNull)
+	List.list('null?', isNull),
+	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
+	List.list('-', args => args.reduce((p,c)=>p-c, 0))
 );
 
 export function setupEnvironment() {
@@ -435,5 +438,5 @@ function primitiveProcedureObjects() {
 }
 
 function applyPrimitiveProcedure(proc, args) {
-	return proc.apply(List.listToArray(args));
+	return primitiveImplementation(proc)(args);
 }

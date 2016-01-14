@@ -2,8 +2,12 @@
 
 import { syntaxer } from './syntaxer';
 
+import { car, map, listToArray } from './list';
+
 import { _eval, setupEnvironment } from './core';
 
 const globalEnvironment = setupEnvironment();
 
-export const interpretate = syntaxer;
+export function interpretate(input) {
+	return listToArray(map(proc => _eval(proc, globalEnvironment), syntaxer(input)));
+}
