@@ -42,7 +42,7 @@ function eval(exp, env) {
     cond([
         () => isSelfEvaluating(exp), () => exp,
         () => isVariable(exp), () => lookupVariableValue(exp, env),
-        () => isQouted(exp), () => textOfQutation(exp),
+        () => isQuoted(exp), () => textOfQuotation(exp),
         () => isAssignment(exp), () => evalAssignment(exp, env),
         () => isDefinition(exp), () => evalDefinition(exp, env),
         () => isIf(exp), () => evalIf(exp, env),
@@ -210,3 +210,104 @@ function ifAlternative(exp) {
 	}
 }
 
+function makeIf(predicate, consequent, alternative) {
+	return list('if', predicate, consequent, alternative);
+}
+
+function isBegin(exp) {
+	return isTaggedList(exp, 'begin');
+}
+
+function beginActions(exp) {
+	return cdr(exp);
+}
+
+function isLastExp(seq) {
+	return cdr(seq) === null;
+}
+
+function firstExp(seq) {
+	return car(seq);
+}
+
+function restExps(seq) {
+	return cdr(seq);
+}
+
+function makeBegin(seq) {
+	return cons('begin', seq);
+}
+
+function sequenceToExp(seq) {
+	return cond([
+		() => seq === null, () => seq,
+		() => isLastExp(seq), () => firstExp(seq),
+		() => true, () => makeBegin(seq)
+	]);
+}
+
+function isApplication(exp) {
+	return isPair(exp);
+}
+
+function operator(exp) {
+	return car(exp);
+}
+
+function operands(exp) {
+	return cdr(exp);
+}
+
+function isNoOperands(ops) {
+	return ops === null;
+}
+
+function firstOperand(ops) {
+	return car(ops);
+}
+
+function restOperands(ops) {
+	return cdr(ops);
+}
+
+function isCond(exp) {
+	return isTaggedList(exp, 'cond');
+}
+
+function condClauses(exp) {
+	return cdr(exp);
+}
+
+function isCondElseClause(clause) {
+	return condPredicate(clause) === 'else';
+}
+
+function condPredicate(clause) {
+	return car(clause);
+}
+
+function condActions(clause) {
+	return cdr(clause);
+}
+
+function condToIf(exp) {
+	return expandClauses(condClauses(exp));
+}
+
+function expandClauses(clauses) {
+	if(clauses === null) {
+		return 'false';
+	} else {
+		let first = car(clauses);
+		let rest = cdr(clauses);
+		if(isCondElseClause(first)) {
+			if(rest === null) {
+				return sequenceToExp(condActions(first))
+			} else {
+				throw new Error('COND->IF: Else clause not last', clauses);
+			}
+		} else {
+			return makeIf(condPredicate(first), sequenceToExp(condActions(first)), expandClauses(rest));
+		}
+	}
+}
