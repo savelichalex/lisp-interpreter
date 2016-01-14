@@ -86,10 +86,6 @@ function evalIf(exp, env) {
     }
 }
 
-function isTrue(cond) {
-    return !!cond;
-}
-
 function evalSequence(exps, env) {
     if(isLastExp(exps)) {
         eval(firstExp(exps), env);
@@ -310,4 +306,32 @@ function expandClauses(clauses) {
 			return makeIf(condPredicate(first), sequenceToExp(condActions(first)), expandClauses(rest));
 		}
 	}
+}
+
+function isTrue(x) {
+	return x !== false; //TODO: make it for lisp rules
+}
+
+function isFalse(x) {
+	return x === false; //TODO: make it for lisp rules
+}
+
+function makeProcedure(parameters, body, env) {
+	return list('procedure', parameters, body, env);
+}
+
+function isCompoundProcedure(p) {
+	return isTaggedList(p, 'procedure');
+}
+
+function procedureParameters(p) {
+	return car(cdr(p));
+}
+
+function procedureBody(p) {
+	return car(cdr(cdr(p)));
+}
+
+function procedureEnvironment(p) {
+	return car(cdr(cdr(cdr(p))));
 }
