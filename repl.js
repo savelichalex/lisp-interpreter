@@ -1,3 +1,10 @@
-/**
- * Created by savelichalex on 14.01.16.
- */
+'use strict';
+
+//REPL
+
+const inputPrompt = ";;; Input Eval:";
+const outputPrompt = ";;; Output Eval:";
+
+function driverLoop() {
+
+}

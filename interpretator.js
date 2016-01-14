@@ -1,3 +1,7 @@
-/**
- * Created by savelichalex on 14.01.16.
- */
+'use strict';
+
+import { syntaxer } from './syntaxer';
+
+import { _eval, setupEnvironment } from './core';
+
+const globalEnvironment = setupEnvironment();

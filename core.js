@@ -2,18 +2,9 @@
 
 import * as List from './list';
 
-function cond(arr) {
-    let length = arr.length;
-    for(let i = 0; i < length; i++) {
-        if(arr[i]()) {
-            return arr[++i]();
-        } else {
-            i++;
-        }
-    }
-}
+import { cond } from './util';
 
-function _eval(exp, env) {
+export function _eval(exp, env) {
     cond([
         () => isSelfEvaluating(exp), () => exp,
         () => isVariable(exp), () => lookupVariableValue(exp, env),
@@ -413,14 +404,19 @@ function defineVariable(variable, value, env) {
 
 //
 
-function setupEnvironment() {
+const primitiveProcedures = List.list(
+	List.list('List.car', List.car),
+	List.list('List.cdr', List.cdr),
+	List.list('List.cons', List.cons),
+	List.list('null?', isNull)
+);
+
+export function setupEnvironment() {
 	let initialEnv = extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
 	defineVariable('true', true, initialEnv);
 	defineVariable('false', false, initialEnv);
 	return initialEnv;
 }
-
-const globalEnvironment = setupEnvironment();
 
 function isPrimitiveProcedure(proc) {
 	return isTaggedList(proc, 'primitive');
@@ -429,13 +425,6 @@ function isPrimitiveProcedure(proc) {
 function primitiveImplementation(proc) {
 	return List.car(List.cdr(proc));
 }
-
-const primitiveProcedures = list(
-	List.list('List.car', List.car),
-	List.list('List.cdr', List.cdr),
-	List.list('List.cons', List.cons),
-	List.list('null?', isNull)
-);
 
 function primitiveProcedureNames() {
 	return List.map(List.car, primitiveProcedures);
@@ -448,128 +437,3 @@ function primitiveProcedureObjects() {
 function applyPrimitiveProcedure(proc, args) {
 	return proc.apply(List.listToArray(args));
 }
-
-//REPL
-
-const inputPrompt = ";;; Input Eval:";
-const outputPrompt = ";;; Output Eval:";
-
-function driverLoop() {
-
-}
-
-const LIST_OPEN = 'LIST_OPEN';
-const LIST_CLOSE = 'LIST_CLOSE';
-const NUMBER = 'NUMBER';
-const SYMBOL = 'SYMBOL';
-
-//Lexer
-function* tokenizerGenerator(input) {
-	const length = input.length;
-	let currentToken = '';
-	let currentType;
-	for(let i = 0; i < length; i++) {
-		const char = input[i];
-		if(char === '(') {
-			currentToken = '';
-			yield {type: LIST_OPEN};
-		} else if(char === ')') {
-			currentToken = '';
-			yield {type: LIST_CLOSE};
-		} else if(/^\d$/.test(char)) {
-			if(currentToken === '' || currentType === NUMBER) {
-				currentType = NUMBER;
-			}
-			currentToken = currentToken + char;
-		} else if(/^[^\(\)\s]$/.test(char)) {
-			currentType = STRING;
-		} else if(/^\s$/.test(char)) {
-			if(currentType && currentToken !== '') {
-				yield {
-					type: currentType,
-					token: currentToken
-				}
-			} else {
-				currentToken = '';
-			}
-		}
-	}
-}
-
-class Node {
-	constructor(parent) {
-		this.parent = parent;
-		this.childs = [];
-	}
-
-	addChild(child) {
-		this.childs.push(child);
-	}
-}
-
-class SymbolToken {
-	constructor(value) {
-		this.value = value;
-	}
-}
-
-class NumberToken {
-	constructor(value) {
-		this.value = value;
-	}
-}
-
-function syntaxer(input) {
-	const tokenizer = tokenizerGenerator(input);
-
-	const tree = makeAST(tokenizer);
-	return astToLists(tree);
-}
-
-function makeAST(tokenizer) {
-	let currentNode = new Node();
-	while(true) {
-		const { value, done } = tokenizer.next();
-		if(done) {
-			break;
-		} else {
-			const { type, token } = value;
-			switch(type) {
-				case LIST_OPEN:
-					const newNode = new Node(currentNode);
-					currentNode.addChild(newNode);
-					currentNode = newNode;
-					break;
-				case LIST_CLOSE:
-					currentNode = currentNode.parent;
-					break;
-				case NUMBER:
-					currentNode.addChild(new NumberToken(token));
-					break;
-				case SYMBOL:
-					currentNode.addChild(new SymbolToken(token));
-			}
-		}
-	}
-	return currentNode;
-}
-
-function astToLists(tree) {
-	function scan(node) {
-		function scanChild(child) {
-			child.map(c => List.cons(scan(c), null)).reduceRight((prev, cur) => {
-				List.setCdr(cur, prev);
-				return cdr;
-			})
-		}
-		if(node instanceof SYMBOL) {
-			return node.value + '';
-		} else if(node instanceof NUMBER) {
-			return +node.value;
-		} else if(node instanceof Node) {
-			return scanChild(node.childs);
-		}
-	}
-	return scan(tree);
-}
-
