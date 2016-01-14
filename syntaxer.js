@@ -1,5 +1,7 @@
 'use strict';
 
+import * as List from './list';
+
 //Lexer
 const LIST_OPEN = 'LIST_OPEN';
 const LIST_CLOSE = 'LIST_CLOSE';
