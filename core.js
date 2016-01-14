@@ -16,13 +16,21 @@ function cdr(pair) {
     return pair.cdr;
 }
 
+function setCar(pair, car) {
+	pair.car = car;
+}
+
+function setCdr(pair, cdr) {
+	pair.cdr = cdr;
+}
+
 function isPair(pair) {
     return pair.toString() === '[cons]';
 }
 
 function list() {
 	return Object.keys(arguments).map(key => arguments[key]).map(i => cons(i, null)).reduceRight((prev, cur) => {
-		cur.cdr = prev;
+		setCdr(cur, prev);
 		return cur;
 	});
 }
