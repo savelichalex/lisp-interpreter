@@ -335,3 +335,34 @@ function procedureBody(p) {
 function procedureEnvironment(p) {
 	return car(cdr(cdr(cdr(p))));
 }
+
+
+//Environment
+
+function enclosingEnvironment(env) {
+	return cdr(env);
+}
+
+function firstFrame(env) {
+	return car(env);
+}
+
+const theEmptyEnvironment = cons(null, null);
+
+function makeFrame(variables, values) {
+	return cons(variables, values);
+}
+
+function frameVariables(frame) {
+	return car(frame);
+}
+
+function frameValues(frame) {
+	return cdr(frame);
+}
+
+function addBindingToFrame(variable, value, frame) {
+	setCar(frame, cons(variable, car(frame)));
+	setCdr(frame, cons(value, cdr(frame)));
+}
+
