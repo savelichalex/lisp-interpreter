@@ -43,6 +43,23 @@ function listLength(l, len = 0) {
 	}
 }
 
+function listToArray(list) {
+	let arr = [];
+	let item = list;
+	while(car(item) !== null) {
+		arr.push(item);
+		item = cdr(item);
+	}
+}
+
+function map(proc, list) {
+	if(list === null) {
+		return list;
+	} else {
+		return cons(proc(car(list)), map(proc, cdr(list)));
+	}
+}
+
 function cond(arr) {
     let length = arr.length;
     for(let i = 0; i < length; i++) {
@@ -332,6 +349,10 @@ function isFalse(x) {
 	return x === false; //TODO: make it for lisp rules
 }
 
+function isNull(x) {
+	return x === null;
+}
+
 function makeProcedure(parameters, body, env) {
 	return list('procedure', parameters, body, env);
 }
@@ -459,3 +480,29 @@ function setupEnvironment() {
 
 const globalEnvironment = setupEnvironment();
 
+function isPrimitiveProcedure(proc) {
+	return isTaggedList(proc, 'primitive');
+}
+
+function primitiveImplementation(proc) {
+	return car(cdr(proc));
+}
+
+const primitiveProcedures = list(
+	list('car', car),
+	list('cdr', cdr),
+	list('cons', cons),
+	list('null?', isNull)
+);
+
+function primitiveProcedureNames() {
+	return map(car, primitiveProcedures);
+}
+
+function primitiveProcedureObjects() {
+	return map(proc => list('primitive', car(cdr(proc))), primitiveProcedures);
+}
+
+function applyPrimitiveProcedure(proc, args) {
+	return proc.apply(listToArray(args));
+}
