@@ -407,10 +407,10 @@ function defineVariable(variable, value, env) {
 //
 
 const primitiveProcedures = List.list(
-	List.list('List.car', List.car),
-	List.list('List.cdr', List.cdr),
-	List.list('List.cons', List.cons),
-	List.list('null?', isNull),
+	List.list('car', args => List.car(args[0])),
+	List.list('cdr', args => List.cdr(args[0])),
+	List.list('cons', args => List.cons(args[0], args[1])),
+	List.list('null?', args => isNull(args[0])),
 	List.list('true?', args => isTrue(args[0])),
 	List.list('false?', args => isFalse(args[0])),
 	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
