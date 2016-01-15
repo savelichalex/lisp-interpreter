@@ -22,6 +22,7 @@ export function _eval(exp, env) {
 }
 
 function apply(procedure, args) {
+	//console.log(procedure, args);
     return cond([
         () => isPrimitiveProcedure(procedure), () => applyPrimitiveProcedure(procedure, args),
         () => isCompoundProcedure(procedure), () => evalSequence(
@@ -47,18 +48,18 @@ function listOfValues(exps, env, arr = []) {
 
 function evalIf(exp, env) {
     if(isTrue(_eval(ifPredicate(exp), env))) {
-        _eval(ifConsequent(exp), env);
+        return _eval(ifConsequent(exp), env);
     } else {
-        _eval(ifAlternative(exp), env);
+        return _eval(ifAlternative(exp), env);
     }
 }
 
 function evalSequence(exps, env) {
     if(isLastExp(exps)) {
-        _eval(firstExp(exps), env);
+        return _eval(firstExp(exps), env);
     } else {
         _eval(firstExp(exps), env);
-        evalSequence(restExps(exps), env);
+        return evalSequence(restExps(exps), env);
     }
 }
 
@@ -166,7 +167,7 @@ function ifConsequent(exp) {
 }
 
 function ifAlternative(exp) {
-	if(List.cdr(List.cdr(List.cdr(exp))) === null) {
+	if(List.cdr(List.cdr(List.cdr(exp))) !== null) {
 		return List.car(List.cdr(List.cdr(List.cdr(exp))));
 	} else {
 		return 'false';
@@ -276,7 +277,7 @@ function expandClauses(clauses) {
 }
 
 function isTrue(x) {
-	return x !== false; //TODO: make it for lisp rules
+	return x === true; //TODO: make it for lisp rules
 }
 
 function isFalse(x) {
@@ -410,8 +411,10 @@ const primitiveProcedures = List.list(
 	List.list('List.cdr', List.cdr),
 	List.list('List.cons', List.cons),
 	List.list('null?', isNull),
+	List.list('true?', args => isTrue(args[0])),
+	List.list('false?', args => isFalse(args[0])),
 	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
-	List.list('-', args => args.reduce((p,c)=>p-c, 0))
+	List.list('-', args => args.reduce((p,c)=>p-c))
 );
 
 export function setupEnvironment() {
