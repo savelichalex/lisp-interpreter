@@ -69,3 +69,10 @@ export function forEach(proc, list) {
 		return forEach(proc, cdr(list));
 	}
 }
+
+export function arrayToList(arr) {
+	return arr.map(i => cons(i, null)).reduceRight((prev, cur) => {
+		setCdr(cur, prev);
+		return cur;
+	})
+}

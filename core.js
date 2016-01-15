@@ -29,7 +29,7 @@ function apply(procedure, args) {
                                                         procedureBody(procedure),
                                                         extendEnvironment(
                                                             procedureParameters(procedure),
-                                                            args,
+                                                            List.arrayToList(args),
                                                             procedureEnvironment(procedure)
                                                         )
                                                     ),
@@ -414,7 +414,8 @@ const primitiveProcedures = List.list(
 	List.list('true?', args => isTrue(args[0])),
 	List.list('false?', args => isFalse(args[0])),
 	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
-	List.list('-', args => args.reduce((p,c)=>p-c))
+	List.list('-', args => args.reduce((p,c)=>p-c)),
+	List.list('printline', args => args[0])
 );
 
 export function setupEnvironment() {
