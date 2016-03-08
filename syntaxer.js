@@ -99,8 +99,10 @@ export function* tokenizerGenerator(input) {
 				currentToken = '';
 				break;
 			case /[\s\n]/.test(char):
-				yield makeToken(currentToken);
-				currentToken = '';
+				if(currentToken !== '') {
+					yield makeToken(currentToken);
+					currentToken = '';
+				}
 				break;
 		}
 	}
@@ -117,9 +119,14 @@ class Node {
 	}
 }
 
+class ListNode extends Node {}
+class VectorNode extends Node {}
+
+
 class SymbolToken {
-	constructor(value) {
+	constructor(value, namespace) {
 		this.value = value;
+		this.namespace = namespace; //TODO: set default
 	}
 }
 
@@ -129,8 +136,27 @@ class NumberToken {
 	}
 }
 
-function makeAST(tokenizer) {
-	let currentNode = new Node();
+class LiteralToken {
+	constructor(value) {
+		this.value = value;
+	}
+}
+
+class StringToken {
+	constructor(value) {
+		this.value = value;
+	}
+}
+
+class KeywordToken {
+	constructor(value, namespace) {
+		this.value = value;
+		this.namespace = namespace; //TODO: set default
+	}
+}
+
+export function makeAST(tokenizer) {
+	let currentNode = new ListNode();
 	while (true) {
 		const {value, done} = tokenizer.next();
 		if(done) {
@@ -139,11 +165,17 @@ function makeAST(tokenizer) {
 			const {type, token} = value;
 			switch (type) {
 				case LIST_OPEN:
-					const newNode = new Node(currentNode);
-					currentNode.addChild(newNode);
-					currentNode = newNode;
+					const newList = new ListNode(currentNode);
+					currentNode.addChild(newList);
+					currentNode = newList;
+					break;
+				case VECTOR_OPEN:
+					const newVector = new VectorNode(currentNode);
+					currentNode.addChild(newVector);
+					currentNode = newVector;
 					break;
 				case LIST_CLOSE:
+				case VECTOR_CLOSE:
 					currentNode = currentNode.parent;
 					break;
 				case NUMBER:
@@ -151,6 +183,15 @@ function makeAST(tokenizer) {
 					break;
 				case SYMBOL:
 					currentNode.addChild(new SymbolToken(token));
+					break;
+				case LITERAL:
+					currentNode.addChild(new LiteralToken(token));
+					break;
+				case STRING:
+					currentNode.addChild(new StringToken(token));
+					break;
+				case KEYWORD:
+					currentNode.addChild(new KeywordToken(token));
 					break;
 			}
 		}
