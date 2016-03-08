@@ -5,7 +5,6 @@ import * as List from './list';
 import { cond } from './util';
 
 export function _eval(exp, env) {
-	//console.log(exp);
     return cond([
         () => isSelfEvaluating(exp), () => exp,
         () => isVariable(exp), () => lookupVariableValue(exp, env),
@@ -22,7 +21,6 @@ export function _eval(exp, env) {
 }
 
 function apply(procedure, args) {
-	//console.log(procedure, args);
     return cond([
         () => isPrimitiveProcedure(procedure), () => applyPrimitiveProcedure(procedure, args),
         () => isCompoundProcedure(procedure), () => evalSequence(

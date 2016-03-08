@@ -3,10 +3,66 @@
 import * as List from './list';
 
 //Lexer
-const LIST_OPEN = 'LIST_OPEN';
-const LIST_CLOSE = 'LIST_CLOSE';
-const NUMBER = 'NUMBER';
-const SYMBOL = 'SYMBOL';
+export const LIST_OPEN = 'LIST_OPEN';
+export const LIST_CLOSE = 'LIST_CLOSE';
+export const VECTOR_OPEN = 'VECTOR_OPEN';
+export const VECTOR_CLOSE = 'VECTOR_CLOSE';
+export const NUMBER = 'NUMBER';
+export const SYMBOL = 'SYMBOL';
+export const STRING = 'STRING';
+export const LITERAL = 'LITERAL';
+export const KEYWORD = 'KEYWORD';
+
+const SYMBOL_HEAD = 'a-z\\*\\+\\!\\-\\_\\?\\.\\~\\@';
+const SYMBOL_TAIL = SYMBOL_HEAD + '0-9';
+const NumberPattern = /^(')?\d+/;
+const StringPattern = /^'?"(([^\\"]|\\\\|\\")*)/;
+const LiteralPattern = /^'?(true|false|nil)$/;
+const SymbolPattern =
+	new RegExp(
+		`^\'?(?:([${SYMBOL_HEAD}][${SYMBOL_TAIL}]*)\\/)?([${SYMBOL_HEAD}${'\\/|='}][${SYMBOL_TAIL}]*)`,
+		'i'
+	);
+const KeywordPattern =
+	new RegExp(
+		`^\'?::?(?:([${SYMBOL_HEAD}][${SYMBOL_TAIL}]*)\\/)?([${SYMBOL_HEAD}${'\\/|='}][${SYMBOL_TAIL}]*)`,
+		'i'
+	);
+
+function makeToken(token) {
+	if(NumberPattern.test(token)) {
+		return {
+			type: NUMBER,
+			token
+		};
+	} else if(StringPattern.test(token)) {
+		const [,string] = StringPattern.exec(token);
+		return {
+			type: STRING,
+			token: string
+		};
+	} else if(LiteralPattern.test(token)) {
+		const [,lit] = LiteralPattern.exec(token);
+		return {
+			type: LITERAL,
+			token: lit
+		};
+	} else if(SymbolPattern.test(token)) {
+		const [,namespace,symbol] = SymbolPattern.exec(token) || [];
+		return {
+			type: SYMBOL,
+			token: symbol ? symbol : namespace,
+			namespace: symbol ? namespace : void 0
+		};
+	} else if(KeywordPattern.test(token)) {
+		const [,namespace,keyword] = KeywordPattern.exec(token) || [];
+		return {
+			type: KEYWORD,
+			token: keyword ? keyword : namespace,
+			namespace: keyword ? namespace : void 0
+		};
+	}
+}
 
 export function syntaxer(input) {
 	const tokenizer = tokenizerGenerator(input);
@@ -14,42 +70,38 @@ export function syntaxer(input) {
 	return astToLists(tree);
 }
 
-function* tokenizerGenerator(input) {
+export function* tokenizerGenerator(input) {
 	const length = input.length;
 	let currentToken = '';
-	let currentType;
-	for(let i = 0; i < length; i++) {
+
+	for (let i = 0; i < length; i++) {
 		const char = input[i];
-		if(char === '(') {
-			currentToken = '';
-			yield {type: LIST_OPEN};
-		} else if(char === ')') {
-			if(currentToken !== '') {
-				yield {
-					type: currentType,
-					token: currentToken
-				}
-			}
-			currentToken = '';
-			yield {type: LIST_CLOSE};
-		} else if(/^\d$/.test(char)) {
-			if(currentToken === '' || currentType === NUMBER) {
-				currentType = NUMBER;
-			}
-			currentToken = currentToken + char;
-		} else if(/^[^\(\)\s\d]$/.test(char)) {
-			currentType = SYMBOL;
-			currentToken = currentToken + char;
-		} else if(/^\s$/.test(char)) {
-			if(currentType && currentToken !== '') {
-				yield {
-					type: currentType,
-					token: currentToken
-				};
+		switch (true) {
+			case /[^\(\)\[\]\s\n]/.test(char):
+				currentToken += char;
+				break;
+			case /\(/.test(char):
+				yield {type: LIST_OPEN};
 				currentToken = '';
-			} else {
+				break;
+			case /\[/.test(char):
+				yield {type: VECTOR_OPEN};
 				currentToken = '';
-			}
+				break;
+			case /\)/.test(char):
+				yield makeToken(currentToken);
+				yield {type: LIST_CLOSE};
+				currentToken = '';
+				break;
+			case /]/.test(char):
+				yield makeToken(currentToken);
+				yield {type: VECTOR_CLOSE};
+				currentToken = '';
+				break;
+			case /[\s\n]/.test(char):
+				yield makeToken(currentToken);
+				currentToken = '';
+				break;
 		}
 	}
 }
@@ -79,13 +131,13 @@ class NumberToken {
 
 function makeAST(tokenizer) {
 	let currentNode = new Node();
-	while(true) {
-		const { value, done } = tokenizer.next();
+	while (true) {
+		const {value, done} = tokenizer.next();
 		if(done) {
 			break;
 		} else {
-			const { type, token } = value;
-			switch(type) {
+			const {type, token} = value;
+			switch (type) {
 				case LIST_OPEN:
 					const newNode = new Node(currentNode);
 					currentNode.addChild(newNode);
@@ -114,6 +166,7 @@ function astToLists(tree) {
 				return cur;
 			})
 		}
+
 		if(node instanceof SymbolToken) {
 			return node.value + '';
 		} else if(node instanceof NumberToken) {
@@ -122,5 +175,6 @@ function astToLists(tree) {
 			return scanChild(node.childs);
 		}
 	}
+
 	return scan(tree);
 }
