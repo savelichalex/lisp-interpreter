@@ -1,6 +1,15 @@
 'use strict';
 
 import * as List from './list';
+import {
+	ListNode,
+	VectorNode,
+	NumberToken,
+	SymbolToken,
+	StringToken,
+	LiteralToken,
+	KeywordToken
+} from './types';
 
 //Lexer
 export const LIST_OPEN = 'LIST_OPEN';
@@ -105,53 +114,6 @@ export function* tokenizerGenerator(input) {
 				}
 				break;
 		}
-	}
-}
-
-class Node {
-	constructor(parent) {
-		this.parent = parent;
-		this.childs = [];
-	}
-
-	addChild(child) {
-		this.childs.push(child);
-	}
-}
-
-class ListNode extends Node {}
-class VectorNode extends Node {}
-
-
-class SymbolToken {
-	constructor(value, namespace) {
-		this.value = value;
-		this.namespace = namespace; //TODO: set default
-	}
-}
-
-class NumberToken {
-	constructor(value) {
-		this.value = value;
-	}
-}
-
-class LiteralToken {
-	constructor(value) {
-		this.value = value;
-	}
-}
-
-class StringToken {
-	constructor(value) {
-		this.value = value;
-	}
-}
-
-class KeywordToken {
-	constructor(value, namespace) {
-		this.value = value;
-		this.namespace = namespace; //TODO: set default
 	}
 }
 

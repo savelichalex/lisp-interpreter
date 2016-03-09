@@ -4,6 +4,16 @@ import * as List from './list';
 
 import { cond } from './util';
 
+import {
+	isSymbol,
+	isNumber,
+	isString,
+	isKeyword,
+	isTrue,
+	isFalse,
+	isNil
+} from './types';
+
 export function _eval(exp, env) {
     return cond([
         () => isSelfEvaluating(exp), () => exp,
@@ -74,25 +84,14 @@ function evalDefinition(exp, env) {
 function isSelfEvaluating(exp) {
     return cond([
         () => isNumber(exp), () => true,
-        //() => isString(exp), () => true,
+        () => isString(exp), () => true,
+	    () => isKeyword(exp), () => true,
         () => true, () => false
     ]);
 }
 
-function isNumber(exp) {
-    return typeof exp === 'number';
-}
-
-function isString() {
-    return typeof exp === 'string'; //TODO: check strings in lisp
-}
-
 function isVariable(exp) {
     return isSymbol(exp);
-}
-
-function isSymbol(exp) {
-    return typeof exp === 'string';
 }
 
 function isQuoted(exp) {
@@ -274,18 +273,6 @@ function expandClauses(clauses) {
 	}
 }
 
-function isTrue(x) {
-	return x === true; //TODO: make it for lisp rules
-}
-
-function isFalse(x) {
-	return x === false; //TODO: make it for lisp rules
-}
-
-function isNull(x) {
-	return x === null;
-}
-
 function makeProcedure(parameters, body, env) {
 	return List.list('procedure', parameters, body, env);
 }
@@ -408,7 +395,7 @@ const primitiveProcedures = List.list(
 	List.list('car', args => List.car(args[0])),
 	List.list('cdr', args => List.cdr(args[0])),
 	List.list('cons', args => List.cons(args[0], args[1])),
-	List.list('null?', args => isNull(args[0])),
+	List.list('nil?', args => isNil(args[0])),
 	List.list('true?', args => isTrue(args[0])),
 	List.list('false?', args => isFalse(args[0])),
 	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
