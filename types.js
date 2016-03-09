@@ -1,24 +1,19 @@
 'use strict';
 
-class Node {
-	constructor(parent) {
-		this.parent = parent;
-		this.childs = [];
-	}
-
-	addChild(child) {
-		this.childs.push(child);
-	}
-}
-
-export class ListNode extends Node {}
-export class VectorNode extends Node {}
-
+import { cons, setCar, setCdr } from './list';
 
 export class SymbolToken {
 	constructor(value, namespace) {
 		this.value = value;
 		this.namespace = namespace; //TODO: set default
+	}
+
+	toString() {
+		return this.namespace ? `${this.namespace}/${this.value}` : `${this.value}`;
+	}
+
+	inspect() {
+		return this.toString();
 	}
 }
 
@@ -26,11 +21,27 @@ export class NumberToken {
 	constructor(value) {
 		this.value = value;
 	}
+
+	toString() {
+		return this.value;
+	}
+
+	inspect() {
+		return this.toString();
+	}
 }
 
 export class LiteralToken {
 	constructor(value) {
 		this.value = value;
+	}
+
+	toString() {
+		return this.value;
+	}
+
+	inspect() {
+		return this.toString();
 	}
 }
 
@@ -38,12 +49,28 @@ export class StringToken {
 	constructor(value) {
 		this.value = value;
 	}
+
+	toString() {
+		return this.value;
+	}
+
+	inspect() {
+		return this.toString();
+	}
 }
 
 export class KeywordToken {
 	constructor(value, namespace) {
 		this.value = value;
 		this.namespace = namespace; //TODO: set default
+	}
+
+	toString() {
+		return this.namespace ? `:${this.namespace}/${this.value}` : `:${this.value}`;
+	}
+
+	inspect() {
+		return this.toString();
 	}
 }
 

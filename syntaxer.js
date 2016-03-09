@@ -1,9 +1,12 @@
 'use strict';
 
-import * as List from './list';
 import {
-	ListNode,
-	VectorNode,
+	cons,
+	setCar,
+	setCdr,
+	car
+} from './list';
+import {
 	NumberToken,
 	SymbolToken,
 	StringToken,
@@ -75,11 +78,10 @@ function makeToken(token) {
 
 export function syntaxer(input) {
 	const tokenizer = tokenizerGenerator(input);
-	const tree = makeAST(tokenizer);
-	return astToLists(tree);
+	return makeAST(tokenizer);
 }
 
-export function* tokenizerGenerator(input) {
+function* tokenizerGenerator(input) {
 	const length = input.length;
 	let currentToken = '';
 
@@ -117,8 +119,22 @@ export function* tokenizerGenerator(input) {
 	}
 }
 
-export function makeAST(tokenizer) {
-	let currentNode = new ListNode();
+function makeAST(tokenizer) {
+	let parent;
+	let currentNode = cons(null, null);
+
+	function addChild(node, val) {
+		if(node.hasOwnProperty('car')) {
+			if(!car(node)) {
+				setCar(node, val);
+			} else {
+				setCdr(node, val);
+			}
+		} else {
+			node.push(val);
+		}
+	}
+
 	while (true) {
 		const {value, done} = tokenizer.next();
 		if(done) {
@@ -127,57 +143,38 @@ export function makeAST(tokenizer) {
 			const {type, token} = value;
 			switch (type) {
 				case LIST_OPEN:
-					const newList = new ListNode(currentNode);
-					currentNode.addChild(newList);
+					const newList = cons(null, null);
+					addChild(currentNode, newList);
+					parent = currentNode;
 					currentNode = newList;
 					break;
 				case VECTOR_OPEN:
-					const newVector = new VectorNode(currentNode);
-					currentNode.addChild(newVector);
+					const newVector = [];
+					addChild(currentNode, newVector);
+					parent = currentNode;
 					currentNode = newVector;
 					break;
 				case LIST_CLOSE:
 				case VECTOR_CLOSE:
-					currentNode = currentNode.parent;
+					currentNode = parent;
 					break;
 				case NUMBER:
-					currentNode.addChild(new NumberToken(token));
+					addChild(currentNode, new NumberToken(token));
 					break;
 				case SYMBOL:
-					currentNode.addChild(new SymbolToken(token));
+					addChild(currentNode, new SymbolToken(token));
 					break;
 				case LITERAL:
-					currentNode.addChild(new LiteralToken(token));
+					addChild(currentNode, new LiteralToken(token));
 					break;
 				case STRING:
-					currentNode.addChild(new StringToken(token));
+					addChild(currentNode, new StringToken(token));
 					break;
 				case KEYWORD:
-					currentNode.addChild(new KeywordToken(token));
+					addChild(currentNode, new KeywordToken(token));
 					break;
 			}
 		}
 	}
 	return currentNode;
-}
-
-function astToLists(tree) {
-	function scan(node) {
-		function scanChild(child) {
-			return child.map(c => List.cons(scan(c), null)).reduceRight((prev, cur) => {
-				List.setCdr(cur, prev);
-				return cur;
-			})
-		}
-
-		if(node instanceof SymbolToken) {
-			return node.value + '';
-		} else if(node instanceof NumberToken) {
-			return +node.value;
-		} else if(node instanceof Node) {
-			return scanChild(node.childs);
-		}
-	}
-
-	return scan(tree);
 }

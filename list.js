@@ -1,10 +1,36 @@
-export function cons(first, second) {
-	return {
-		car: first,
-		cdr: second,
-		toString() {
-			return '[cons]'
+function toStringList(cons, str = '') {
+	const f = car(cons);
+	const del = ' , ';
+	function iter(cons, str) {
+		if(cons === null) {
+			return str
+		} else {
+			return iter(cdr(cons), str + del + car(cons));
 		}
+	}
+	if(f) {
+		return iter(cdr(cons), str + f);
+	} else {
+		return str;
+	}
+}
+
+export function cons(first, second) {
+	return new Cons(first, second);
+}
+
+class Cons {
+	constructor(first, second) {
+		this.car = first;
+		this.cdr = second;
+	}
+
+	toString() {
+		return 'List [' + toStringList(this) + ']';
+	}
+
+	inspect() {
+		return 'List [' + toStringList(this) + ']';
 	}
 }
 
@@ -46,7 +72,7 @@ export function listLength(l, len = 0) {
 export function listToArray(list) {
 	let arr = [];
 	let item = list;
-	while(item !== null) {
+	while (item !== null) {
 		arr.push(car(item));
 		item = cdr(item);
 	}
