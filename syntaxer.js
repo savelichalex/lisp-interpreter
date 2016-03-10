@@ -1,11 +1,7 @@
 'use strict';
 
-import {
-	cons,
-	setCar,
-	setCdr,
-	car
-} from './list';
+import { list, vector, concat, conj, peek, pop, isList, isVector, isSeq } from 'mori';
+
 import {
 	NumberToken,
 	SymbolToken,
@@ -77,8 +73,7 @@ function makeToken(token) {
 }
 
 export function syntaxer(input) {
-	const tokenizer = tokenizerGenerator(input);
-	return makeAST(tokenizer);
+	return makeAST(tokenizerGenerator(input));
 }
 
 function* tokenizerGenerator(input) {
@@ -120,21 +115,17 @@ function* tokenizerGenerator(input) {
 }
 
 function makeAST(tokenizer) {
-	let parent;
-	let currentNode = cons(null, null);
-
-	function addChild(node, val) {
-		if(node.hasOwnProperty('car')) {
-			if(!car(node)) {
-				setCar(node, val);
-			} else {
-				setCdr(node, val);
-			}
-		} else {
-			node.push(val);
+	let parents = vector();
+	let currentNode = list();
+	
+	function add(node, val) {
+		if(isList(node) || isSeq(node)) {
+			return concat(node, list(val));
+		} else if(isVector(node)) {
+			return conj(node, val);
 		}
 	}
-
+	
 	while (true) {
 		const {value, done} = tokenizer.next();
 		if(done) {
@@ -143,35 +134,35 @@ function makeAST(tokenizer) {
 			const {type, token} = value;
 			switch (type) {
 				case LIST_OPEN:
-					const newList = cons(null, null);
-					addChild(currentNode, newList);
-					parent = currentNode;
+					const newList = list();
+					parents = conj(parents, currentNode);
 					currentNode = newList;
 					break;
 				case VECTOR_OPEN:
-					const newVector = [];
-					addChild(currentNode, newVector);
-					parent = currentNode;
+					const newVector = vector();
+					parents = conj(parents, currentNode);
 					currentNode = newVector;
 					break;
 				case LIST_CLOSE:
 				case VECTOR_CLOSE:
-					currentNode = parent;
+					const parent = peek(parents);
+					parents = pop(parents);
+					currentNode = add(parent, currentNode);
 					break;
 				case NUMBER:
-					addChild(currentNode, new NumberToken(token));
+					currentNode = add(currentNode, new NumberToken(token));
 					break;
 				case SYMBOL:
-					addChild(currentNode, new SymbolToken(token));
+					currentNode = add(currentNode, new SymbolToken(token));
 					break;
 				case LITERAL:
-					addChild(currentNode, new LiteralToken(token));
+					currentNode = add(currentNode, new LiteralToken(token));
 					break;
 				case STRING:
-					addChild(currentNode, new StringToken(token));
+					currentNode = add(currentNode, new StringToken(token));
 					break;
 				case KEYWORD:
-					addChild(currentNode, new KeywordToken(token));
+					currentNode = add(currentNode, new KeywordToken(token));
 					break;
 			}
 		}

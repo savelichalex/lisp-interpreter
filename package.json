@@ -24,5 +24,8 @@
     "babel-core": "^6.6.5",
     "babel-preset-es2015-node5": "^1.1.1",
     "mocha": "^2.4.5"
+  },
+  "dependencies": {
+    "mori": "^0.3.2"
   }
 }

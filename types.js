@@ -1,7 +1,5 @@
 'use strict';
 
-import { cons, setCar, setCdr } from './list';
-
 export class SymbolToken {
 	constructor(value, namespace) {
 		this.value = value;
