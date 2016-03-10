@@ -99,12 +99,12 @@ function isQuoted(exp) {
 }
 
 function textOfQuotation(exp) {
-    return List.car(List.cdr(exp));
+    return first(rest(exp));
 }
 
 function isTaggedList(exp, tag) {
     if(List.isPair(exp)) {
-        if(List.car(exp) === tag) {
+        if(first(exp) === tag) {
             return true;
         }
     }
@@ -116,11 +116,11 @@ function isAssignment(exp) {
 }
 
 function assignmentVariable(exp) {
-	return List.car(List.cdr(exp));
+	return first(rest(exp));
 }
 
 function assignmentValue(exp) {
-	return List.car(List.cdr(List.cdr(exp)));
+	return first(rest(rest(exp)));
 }
 
 function isDefinition(exp) {
@@ -128,11 +128,11 @@ function isDefinition(exp) {
 }
 
 function definitionVariable(exp) {
-	return isSymbol(List.car(List.cdr(exp))) ? List.car(List.cdr(exp)) : List.car(List.car(List.cdr(exp)));
+	return isSymbol(first(rest(exp))) ? first(rest(exp)) : first(first(rest(exp)));
 }
 
 function definitionValue(exp) {
-	return isSymbol(List.car(List.cdr(exp))) ? List.car(List.cdr(List.cdr(exp))) : makeLambda(List.cdr(List.car(List.cdr(exp))), List.cdr(List.cdr(exp)));
+	return isSymbol(first(rest(exp))) ? first(rest(rest(exp))) : makeLambda(rest(first(rest(exp))), rest(rest(exp)));
 }
 
 function isLambda(exp) {
@@ -140,11 +140,11 @@ function isLambda(exp) {
 }
 
 function lambdaParameters(exp) {
-	return List.car(List.cdr(exp));
+	return first(rest(exp));
 }
 
 function lambdaBody(exp) {
-	return List.cdr(List.cdr(exp));
+	return rest(rest(exp));
 }
 
 function makeLambda(parameters, body) {
@@ -156,16 +156,16 @@ function isIf(exp) {
 }
 
 function ifPredicate(exp) {
-	return List.car(List.cdr(exp));
+	return first(rest(exp));
 }
 
 function ifConsequent(exp) {
-	return List.car(List.cdr(List.cdr(exp)));
+	return first(rest(rest(exp)));
 }
 
 function ifAlternative(exp) {
-	if(List.cdr(List.cdr(List.cdr(exp))) !== null) {
-		return List.car(List.cdr(List.cdr(List.cdr(exp))));
+	if(rest(rest(rest(exp))) !== null) {
+		return first(rest(rest(rest(exp))));
 	} else {
 		return 'false';
 	}
@@ -180,19 +180,19 @@ function isBegin(exp) {
 }
 
 function beginActions(exp) {
-	return List.cdr(exp);
+	return rest(exp);
 }
 
 function isLastExp(seq) {
-	return List.cdr(seq) === null;
+	return rest(seq) === null;
 }
 
 function firstExp(seq) {
-	return List.car(seq);
+	return first(seq);
 }
 
 function restExps(seq) {
-	return List.cdr(seq);
+	return rest(seq);
 }
 
 function makeBegin(seq) {
@@ -212,11 +212,11 @@ function isApplication(exp) {
 }
 
 function operator(exp) {
-	return List.car(exp);
+	return first(exp);
 }
 
 function operands(exp) {
-	return List.cdr(exp);
+	return rest(exp);
 }
 
 function isNoOperands(ops) {
@@ -224,11 +224,11 @@ function isNoOperands(ops) {
 }
 
 function firstOperand(ops) {
-	return List.car(ops);
+	return first(ops);
 }
 
 function restOperand(ops) {
-	return List.cdr(ops);
+	return rest(ops);
 }
 
 function isCond(exp) {
@@ -236,7 +236,7 @@ function isCond(exp) {
 }
 
 function condClauses(exp) {
-	return List.cdr(exp);
+	return rest(exp);
 }
 
 function isCondElseClause(clause) {
@@ -244,11 +244,11 @@ function isCondElseClause(clause) {
 }
 
 function condPredicate(clause) {
-	return List.car(clause);
+	return first(clause);
 }
 
 function condActions(clause) {
-	return List.cdr(clause);
+	return rest(clause);
 }
 
 function condToIf(exp) {
@@ -259,8 +259,8 @@ function expandClauses(clauses) {
 	if(clauses === null) {
 		return 'false';
 	} else {
-		let first = List.car(clauses);
-		let rest = List.cdr(clauses);
+		let first = first(clauses);
+		let rest = rest(clauses);
 		if(isCondElseClause(first)) {
 			if(rest === null) {
 				return sequenceToExp(condActions(first))
@@ -282,32 +282,32 @@ function isCompoundProcedure(p) {
 }
 
 function procedureParameters(p) {
-	return List.car(List.cdr(p));
+	return first(rest(p));
 }
 
 function procedureBody(p) {
-	return List.car(List.cdr(List.cdr(p)));
+	return first(rest(rest(p)));
 }
 
 function procedureEnvironment(p) {
-	return List.car(List.cdr(List.cdr(List.cdr(p))));
+	return first(rest(rest(rest(p))));
 }
 
 
 //Environment
 
 function enclosingEnvironment(env) {
-	return List.cdr(env);
+	return rest(env);
 }
 
 function firstFrame(env) {
-	return List.car(env);
+	return first(env);
 }
 
 const theEmptyEnvironment = List.cons(null, null);
 
 function isEmptyList(l) {
-	return l.toString() === '[cons]' && List.car(l) === null && List.cdr(l) === null;
+	return l.toString() === '[cons]' && first(l) === null && rest(l) === null;
 }
 
 function makeFrame(variables, values) {
@@ -315,16 +315,16 @@ function makeFrame(variables, values) {
 }
 
 function frameVariables(frame) {
-	return List.car(frame);
+	return first(frame);
 }
 
 function frameValues(frame) {
-	return List.cdr(frame);
+	return rest(frame);
 }
 
 function addBindingToFrame(variable, value, frame) {
-	List.setCar(frame, List.cons(variable, List.car(frame)));
-	List.setCdr(frame, List.cons(value, List.cdr(frame)));
+	List.setCar(frame, List.cons(variable, first(frame)));
+	List.setCdr(frame, List.cons(value, rest(frame)));
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
@@ -344,8 +344,8 @@ function lookupVariableValue(variable, env) {
 		function scan(vars, vals) {
 			return cond([
 				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === List.car(vars), () => List.car(vals),
-				() => true, () => scan(List.cdr(vars), List.cdr(vals))
+				() => variable === first(vars), () => first(vals),
+				() => true, () => scan(rest(vars), rest(vals))
 			])
 		}
 		if(isEmptyList(env)) {
@@ -363,8 +363,8 @@ function setVariableValue(variable, value, env) {
 		function scan(vars, vals) {
 			return cond([
 				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === List.car(vars), () => List.setCar(vals, value),
-				() => true, () => scan(List.cdr(vars), List.cdr(vals))
+				() => variable === first(vars), () => List.setCar(vals, value),
+				() => true, () => scan(rest(vars), rest(vals))
 			])
 		}
 		if(isEmptyList(env)) {
@@ -382,8 +382,8 @@ function defineVariable(variable, value, env) {
 	function scan(vars, vals) {
 		return cond([
 			() => vars === null, () => addBindingToFrame(variable, value, frame),
-			() => variable === List.car(vars), () => List.setCar(vals, value),
-			() => true, () => scan(List.cdr(vars), List.cdr(vals))
+			() => variable === first(vars), () => List.setCar(vals, value),
+			() => true, () => scan(rest(vars), rest(vals))
 		]);
 	}
 	return scan(frameVariables(frame), frameValues(frame));
@@ -392,8 +392,8 @@ function defineVariable(variable, value, env) {
 //
 
 const primitiveProcedures = List.list(
-	List.list('car', args => List.car(args[0])),
-	List.list('cdr', args => List.cdr(args[0])),
+	List.list('car', args => first(args[0])),
+	List.list('cdr', args => rest(args[0])),
 	List.list('cons', args => List.cons(args[0], args[1])),
 	List.list('nil?', args => isNil(args[0])),
 	List.list('true?', args => isTrue(args[0])),
@@ -415,15 +415,15 @@ function isPrimitiveProcedure(proc) {
 }
 
 function primitiveImplementation(proc) {
-	return List.car(List.cdr(proc));
+	return first(rest(proc));
 }
 
 function primitiveProcedureNames() {
-	return List.map(List.car, primitiveProcedures);
+	return List.map(first, primitiveProcedures);
 }
 
 function primitiveProcedureObjects() {
-	return List.map(proc => List.list('primitive', List.car(List.cdr(proc))), primitiveProcedures);
+	return List.map(proc => List.list('primitive', first(rest(proc))), primitiveProcedures);
 }
 
 function applyPrimitiveProcedure(proc, args) {
