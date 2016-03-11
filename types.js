@@ -99,3 +99,7 @@ export function isString(exp) {
 export function isKeyword(exp) {
 	return exp instanceof KeywordToken;
 }
+
+export function isLiteral(exp) {
+	return exp instanceof LiteralToken;
+}

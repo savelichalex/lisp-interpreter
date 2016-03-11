@@ -11,15 +11,15 @@ import {
 } from './types';
 
 //Lexer
-export const LIST_OPEN = 'LIST_OPEN';
-export const LIST_CLOSE = 'LIST_CLOSE';
-export const VECTOR_OPEN = 'VECTOR_OPEN';
-export const VECTOR_CLOSE = 'VECTOR_CLOSE';
-export const NUMBER = 'NUMBER';
-export const SYMBOL = 'SYMBOL';
-export const STRING = 'STRING';
-export const LITERAL = 'LITERAL';
-export const KEYWORD = 'KEYWORD';
+const LIST_OPEN = 'LIST_OPEN';
+const LIST_CLOSE = 'LIST_CLOSE';
+const VECTOR_OPEN = 'VECTOR_OPEN';
+const VECTOR_CLOSE = 'VECTOR_CLOSE';
+const NUMBER = 'NUMBER';
+const SYMBOL = 'SYMBOL';
+const STRING = 'STRING';
+const LITERAL = 'LITERAL';
+const KEYWORD = 'KEYWORD';
 
 const SYMBOL_HEAD = 'a-z\\*\\+\\!\\-\\_\\?\\.\\~\\@';
 const SYMBOL_TAIL = SYMBOL_HEAD + '0-9';
@@ -36,6 +36,10 @@ const KeywordPattern =
 		`^\'?::?(?:([${SYMBOL_HEAD}][${SYMBOL_TAIL}]*)\\/)?([${SYMBOL_HEAD}${'\\/|='}][${SYMBOL_TAIL}]*)`,
 		'i'
 	);
+
+export function syntaxer(input) {
+	return makeAST(tokenizerGenerator(input));
+}
 
 function makeToken(token) {
 	if(NumberPattern.test(token)) {
@@ -70,10 +74,6 @@ function makeToken(token) {
 			namespace: keyword ? namespace : void 0
 		};
 	}
-}
-
-export function syntaxer(input) {
-	return makeAST(tokenizerGenerator(input));
 }
 
 function* tokenizerGenerator(input) {

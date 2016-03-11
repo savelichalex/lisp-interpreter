@@ -1,6 +1,13 @@
 'use strict';
 
-import * as List from './list';
+import {
+	isSeq,
+	isVector,
+	list,
+	seq,
+	map,
+	conj
+} from 'mori';
 
 import { cond } from './util';
 
@@ -9,6 +16,7 @@ import {
 	isNumber,
 	isString,
 	isKeyword,
+	isLiteral,
 	isTrue,
 	isFalse,
 	isNil
@@ -86,6 +94,7 @@ function isSelfEvaluating(exp) {
         () => isNumber(exp), () => true,
         () => isString(exp), () => true,
 	    () => isKeyword(exp), () => true,
+	    () => isLiteral(exp), () => true,
         () => true, () => false
     ]);
 }
@@ -103,7 +112,7 @@ function textOfQuotation(exp) {
 }
 
 function isTaggedList(exp, tag) {
-    if(List.isPair(exp)) {
+    if(isSeq(exp)) {
         if(first(exp) === tag) {
             return true;
         }
@@ -124,7 +133,7 @@ function assignmentValue(exp) {
 }
 
 function isDefinition(exp) {
-	return isTaggedList(exp, 'define');
+	return isTaggedList(exp, 'def');
 }
 
 function definitionVariable(exp) {
@@ -172,7 +181,7 @@ function ifAlternative(exp) {
 }
 
 function makeIf(predicate, consequent, alternative) {
-	return List.list('if', predicate, consequent, alternative);
+	return seq(list('if', predicate, consequent, alternative));
 }
 
 function isBegin(exp) {
@@ -195,8 +204,8 @@ function restExps(seq) {
 	return rest(seq);
 }
 
-function makeBegin(seq) {
-	return List.cons('begin', seq);
+function makeBegin(s) {
+	return seq(list('begin', s));
 }
 
 function sequenceToExp(seq) {
@@ -208,7 +217,7 @@ function sequenceToExp(seq) {
 }
 
 function isApplication(exp) {
-	return List.isPair(exp);
+	return isSeq(exp);
 }
 
 function operator(exp) {
@@ -274,7 +283,7 @@ function expandClauses(clauses) {
 }
 
 function makeProcedure(parameters, body, env) {
-	return List.list('procedure', parameters, body, env);
+	return seq(list('procedure', parameters, body, env));
 }
 
 function isCompoundProcedure(p) {
@@ -311,7 +320,7 @@ function isEmptyList(l) {
 }
 
 function makeFrame(variables, values) {
-	return List.cons(variables, values);
+	return seq(list(variables, values));
 }
 
 function frameVariables(frame) {
@@ -323,12 +332,12 @@ function frameValues(frame) {
 }
 
 function addBindingToFrame(variable, value, frame) {
-	List.setCar(frame, List.cons(variable, first(frame)));
-	List.setCdr(frame, List.cons(value, rest(frame)));
+	List.setCar(frame, seq(list(variable, first(frame))));
+	List.setCdr(frame, seq(list(value, rest(frame))); //TODO: check it
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
-	if(List.listLength(vars) === List.listLength(vals)) {
+	if(List.listLength(vars) === List.listLength(vals)) { //TODO: find length in mori api
 		return List.cons(makeFrame(vars, vals), baseEnv);
 	} else {
 		if(List.listLength(vars) < List.listLength(vals)) {
@@ -391,17 +400,17 @@ function defineVariable(variable, value, env) {
 
 //
 
-const primitiveProcedures = List.list(
-	List.list('car', args => first(args[0])),
-	List.list('cdr', args => rest(args[0])),
-	List.list('cons', args => List.cons(args[0], args[1])),
-	List.list('nil?', args => isNil(args[0])),
-	List.list('true?', args => isTrue(args[0])),
-	List.list('false?', args => isFalse(args[0])),
-	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
-	List.list('-', args => args.reduce((p,c)=>p-c)),
-	List.list('printline', args => args[0])
-);
+const primitiveProcedures = seq(list(
+	seq(list('car', args => first(args[0])),
+	seq(list('cdr', args => rest(args[0]))),
+	seq(list('cons', args => List.cons(args[0], args[1]))),
+	seq(list('nil?', args => isNil(args[0]))),
+	seq(list('true?', args => isTrue(args[0]))),
+	seq(list('false?', args => isFalse(args[0]))),
+	seq(list('+', args => args.reduce((p,c)=>p+c, 0))),
+	seq(list('-', args => args.reduce((p,c)=>p-c))),
+	seq(list('printline', args => args[0]))
+));
 
 export function setupEnvironment() {
 	let initialEnv = extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
@@ -419,11 +428,11 @@ function primitiveImplementation(proc) {
 }
 
 function primitiveProcedureNames() {
-	return List.map(first, primitiveProcedures);
+	return map(first, primitiveProcedures);
 }
 
 function primitiveProcedureObjects() {
-	return List.map(proc => List.list('primitive', first(rest(proc))), primitiveProcedures);
+	return map(proc => seq(list('primitive', first(rest(proc))), primitiveProcedures));
 }
 
 function applyPrimitiveProcedure(proc, args) {
