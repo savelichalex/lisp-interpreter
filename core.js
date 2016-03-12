@@ -6,7 +6,8 @@ import {
 	list,
 	seq,
 	map,
-	conj
+	conj,
+	count
 } from 'mori';
 
 import { cond } from './util';
@@ -95,6 +96,7 @@ function isSelfEvaluating(exp) {
         () => isString(exp), () => true,
 	    () => isKeyword(exp), () => true,
 	    () => isLiteral(exp), () => true,
+	    () => isVector(exp), () => true,
         () => true, () => false
     ]);
 }
@@ -145,7 +147,7 @@ function definitionValue(exp) {
 }
 
 function isLambda(exp) {
-	return isTaggedList(exp, 'lambda');
+	return isTaggedList(exp, 'fn');
 }
 
 function lambdaParameters(exp) {
@@ -157,7 +159,7 @@ function lambdaBody(exp) {
 }
 
 function makeLambda(parameters, body) {
-	return List.cons('lambda', List.cons(parameters, body));
+	return seq(list('fn', seq(list((parameters, body)))));
 }
 
 function isIf(exp) {
@@ -313,7 +315,7 @@ function firstFrame(env) {
 	return first(env);
 }
 
-const theEmptyEnvironment = List.cons(null, null);
+const theEmptyEnvironment = list();
 
 function isEmptyList(l) {
 	return l.toString() === '[cons]' && first(l) === null && rest(l) === null;
@@ -333,14 +335,14 @@ function frameValues(frame) {
 
 function addBindingToFrame(variable, value, frame) {
 	List.setCar(frame, seq(list(variable, first(frame))));
-	List.setCdr(frame, seq(list(value, rest(frame))); //TODO: check it
+	List.setCdr(frame, seq(list(value, rest(frame)))); //TODO: check it
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
-	if(List.listLength(vars) === List.listLength(vals)) { //TODO: find length in mori api
-		return List.cons(makeFrame(vars, vals), baseEnv);
+	if(count(vars) === count(vals)) { //TODO: find length in mori api
+		return seq(list(makeFrame(vars, vals), baseEnv));
 	} else {
-		if(List.listLength(vars) < List.listLength(vals)) {
+		if(count(vars) < count(vals)) {
 			throw new Error('Given little count of arguments', vars, vals);
 		} else {
 			throw new Error('Given too much arguments', vars, vals);
@@ -410,7 +412,7 @@ const primitiveProcedures = seq(list(
 	seq(list('+', args => args.reduce((p,c)=>p+c, 0))),
 	seq(list('-', args => args.reduce((p,c)=>p-c))),
 	seq(list('printline', args => args[0]))
-));
+)));
 
 export function setupEnvironment() {
 	let initialEnv = extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);

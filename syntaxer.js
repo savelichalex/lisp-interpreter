@@ -77,35 +77,66 @@ function makeToken(token) {
 }
 
 function* tokenizerGenerator(input) {
+	input = input + "\n";
 	const length = input.length;
 	let currentToken = '';
-
+	let string = false;
+	let comment = false;
 	for (let i = 0; i < length; i++) {
 		const char = input[i];
 		switch (true) {
-			case /[^\(\)\[\]\s\n]/.test(char):
+			case /[^\(\)\[\]\s\n;"]/.test(char):
 				currentToken += char;
 				break;
 			case /\(/.test(char):
-				yield {type: LIST_OPEN};
-				currentToken = '';
+				if(!string && !comment) {
+					yield {type: LIST_OPEN};
+					currentToken = '';
+				}
 				break;
 			case /\[/.test(char):
-				yield {type: VECTOR_OPEN};
-				currentToken = '';
+				if(!string && !comment) {
+					yield {type: VECTOR_OPEN};
+					currentToken = '';
+				}
 				break;
 			case /\)/.test(char):
-				yield makeToken(currentToken);
-				yield {type: LIST_CLOSE};
-				currentToken = '';
+				if(!string && !comment) {
+					yield makeToken(currentToken);
+					yield {type: LIST_CLOSE};
+					currentToken = '';
+				}
 				break;
 			case /]/.test(char):
-				yield makeToken(currentToken);
-				yield {type: VECTOR_CLOSE};
-				currentToken = '';
+				if(!string && !comment) {
+					yield makeToken(currentToken);
+					yield {type: VECTOR_CLOSE};
+					currentToken = '';
+				}
 				break;
-			case /[\s\n]/.test(char):
-				if(currentToken !== '') {
+			case /"/.test(char):
+				string = !string;
+				currentToken += char;
+				break;
+			case /;/.test(char):
+				comment = true;
+				break;
+			case /\s/.test(char):
+				if(!string && !comment) {
+					if(currentToken !== '') {
+						yield makeToken(currentToken);
+						currentToken = '';
+					}
+				} else {
+					currentToken += char;
+				}
+				break;
+			case /\n/.test(char):
+				if(comment) {
+					comment = false;
+					string = false;
+					currentToken = '';
+				} else if(currentToken !== '') {
 					yield makeToken(currentToken);
 					currentToken = '';
 				}
@@ -131,7 +162,7 @@ function makeAST(tokenizer) {
 		if(done) {
 			break;
 		} else {
-			const {type, token} = value;
+			const {type, token, namespace} = value;
 			switch (type) {
 				case LIST_OPEN:
 					const newList = list();
@@ -153,7 +184,7 @@ function makeAST(tokenizer) {
 					currentNode = add(currentNode, new NumberToken(token));
 					break;
 				case SYMBOL:
-					currentNode = add(currentNode, new SymbolToken(token));
+					currentNode = add(currentNode, new SymbolToken(token, namespace));
 					break;
 				case LITERAL:
 					currentNode = add(currentNode, new LiteralToken(token));
@@ -162,7 +193,7 @@ function makeAST(tokenizer) {
 					currentNode = add(currentNode, new StringToken(token));
 					break;
 				case KEYWORD:
-					currentNode = add(currentNode, new KeywordToken(token));
+					currentNode = add(currentNode, new KeywordToken(token, namespace));
 					break;
 			}
 		}

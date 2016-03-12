@@ -17,7 +17,7 @@ export class SymbolToken {
 
 export class NumberToken {
 	constructor(value) {
-		this.value = value;
+		this.value = +value;
 	}
 
 	toString() {

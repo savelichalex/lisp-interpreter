@@ -13,7 +13,7 @@ const rl = readline.createInterface({
 	output: process.stdout
 });
 
-console.log('Lisp interpretator written on JavaScript');
+console.log('Clojure interpretator written on JavaScript');
 console.log(inputPrompt);
 rl.on('line', line => {
 	const res = interpretate(line);
