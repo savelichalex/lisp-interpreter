@@ -7,7 +7,7 @@ export class SymbolToken {
 	}
 
 	toString() {
-		return this.namespace ? `${this.namespace}/${this.value}` : `${this.value}`;
+		return this.namespace ? `'${this.namespace}/${this.value}` : `'${this.value}`;
 	}
 
 	inspect() {
@@ -49,7 +49,7 @@ export class StringToken {
 	}
 
 	toString() {
-		return this.value;
+		return `"${this.value}"`;
 	}
 
 	inspect() {
@@ -81,15 +81,15 @@ export function isNumber(exp) {
 }
 
 export function isTrue(exp) {
-	return (exp instanceof LiteralToken) && (exp.value = 'true');
+	return (exp instanceof LiteralToken) && (exp.value === 'true');
 }
 
 export function isFalse(exp) {
-	return (exp instanceof LiteralToken) && (exp.value = 'false');
+	return (exp instanceof LiteralToken) && (exp.value === 'false');
 }
 
 export function isNil(exp) {
-	return (exp instanceof LiteralToken) && (exp.value = 'nil');
+	return (exp instanceof LiteralToken) && (exp.value === 'nil');
 }
 
 export function isString(exp) {

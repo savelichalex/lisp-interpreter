@@ -7,7 +7,9 @@ import {
 	seq,
 	map,
 	conj,
-	count
+	count,
+	first,
+	rest
 } from 'mori';
 
 import { cond } from './util';
@@ -20,7 +22,8 @@ import {
 	isLiteral,
 	isTrue,
 	isFalse,
-	isNil
+	isNil,
+	LiteralToken
 } from './types';
 
 export function _eval(exp, env) {
@@ -64,10 +67,12 @@ function listOfValues(exps, env, arr = []) {
 }
 
 function evalIf(exp, env) {
-    if(isTrue(_eval(ifPredicate(exp), env))) {
-        return _eval(ifConsequent(exp), env);
-    } else {
+	// console.log(exp, _eval(ifPredicate(exp), env), isTrue(_eval(ifPredicate(exp), env)));
+	const resultInPredicate = _eval(ifPredicate(exp), env);
+    if(isFalse(resultInPredicate) || isNil(resultInPredicate)) {
         return _eval(ifAlternative(exp), env);
+    } else {
+	    return _eval(ifConsequent(exp), env);
     }
 }
 
@@ -115,7 +120,10 @@ function textOfQuotation(exp) {
 
 function isTaggedList(exp, tag) {
     if(isSeq(exp)) {
-        if(first(exp) === tag) {
+	    const f = first(exp);
+	    if(isSymbol(f) && f.value === tag) {
+		    return true;
+	    } else if(f === tag) {
             return true;
         }
     }
@@ -178,7 +186,7 @@ function ifAlternative(exp) {
 	if(rest(rest(rest(exp))) !== null) {
 		return first(rest(rest(rest(exp))));
 	} else {
-		return 'false';
+		return new LiteralToken('false');
 	}
 }
 
@@ -187,7 +195,7 @@ function makeIf(predicate, consequent, alternative) {
 }
 
 function isBegin(exp) {
-	return isTaggedList(exp, 'begin');
+	return isTaggedList(exp, 'begin'); //in clojure this is `do`
 }
 
 function beginActions(exp) {
@@ -195,7 +203,7 @@ function beginActions(exp) {
 }
 
 function isLastExp(seq) {
-	return rest(seq) === null;
+	return count(rest(seq)) === 0;
 }
 
 function firstExp(seq) {
@@ -212,7 +220,7 @@ function makeBegin(s) {
 
 function sequenceToExp(seq) {
 	return cond([
-		() => seq === null, () => seq,
+		() => count(seq) === 0, () => seq,
 		() => isLastExp(seq), () => firstExp(seq),
 		() => true, () => makeBegin(seq)
 	]);
@@ -231,7 +239,7 @@ function operands(exp) {
 }
 
 function isNoOperands(ops) {
-	return ops === null;
+	return count(ops) === 0;
 }
 
 function firstOperand(ops) {
@@ -251,15 +259,7 @@ function condClauses(exp) {
 }
 
 function isCondElseClause(clause) {
-	return condPredicate(clause) === 'else';
-}
-
-function condPredicate(clause) {
-	return first(clause);
-}
-
-function condActions(clause) {
-	return rest(clause);
+	return isKeyword(clause) && (clause.value === 'else');
 }
 
 function condToIf(exp) {
@@ -267,19 +267,19 @@ function condToIf(exp) {
 }
 
 function expandClauses(clauses) {
-	if(clauses === null) {
-		return 'false';
+	if(count(clauses) === 0) {
+		return new LiteralToken('false');
 	} else {
-		let first = first(clauses);
-		let rest = rest(clauses);
-		if(isCondElseClause(first)) {
-			if(rest === null) {
-				return sequenceToExp(condActions(first))
+		let predicate = first(clauses);
+		let cons = rest(clauses);
+		if(isCondElseClause(predicate)) {
+			if(count(cons) === 1) {
+				return first(cons);
 			} else {
 				throw new Error('COND->IF: Else clause not last', clauses);
 			}
 		} else {
-			return makeIf(condPredicate(first), sequenceToExp(condActions(first)), expandClauses(rest));
+			return makeIf(predicate, first(cons), expandClauses(rest(cons)));
 		}
 	}
 }
@@ -318,7 +318,7 @@ function firstFrame(env) {
 const theEmptyEnvironment = list();
 
 function isEmptyList(l) {
-	return l.toString() === '[cons]' && first(l) === null && rest(l) === null;
+	return count(l) === 0;
 }
 
 function makeFrame(variables, values) {
@@ -330,7 +330,7 @@ function frameVariables(frame) {
 }
 
 function frameValues(frame) {
-	return rest(frame);
+	return first(rest(frame));
 }
 
 function addBindingToFrame(variable, value, frame) {
@@ -339,7 +339,7 @@ function addBindingToFrame(variable, value, frame) {
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
-	if(count(vars) === count(vals)) { //TODO: find length in mori api
+	if(count(vars) === count(vals)) {
 		return seq(list(makeFrame(vars, vals), baseEnv));
 	} else {
 		if(count(vars) < count(vals)) {
@@ -351,10 +351,11 @@ function extendEnvironment(vars, vals, baseEnv) {
 }
 
 function lookupVariableValue(variable, env) {
+	variable = variable.value;
 	function envLoop(env) {
 		function scan(vars, vals) {
 			return cond([
-				() => vars === null, () => envLoop(enclosingEnvironment(env)),
+				() => isEmptyList(vars), () => envLoop(enclosingEnvironment(env)),
 				() => variable === first(vars), () => first(vals),
 				() => true, () => scan(rest(vars), rest(vals))
 			])
@@ -403,22 +404,20 @@ function defineVariable(variable, value, env) {
 //
 
 const primitiveProcedures = seq(list(
-	seq(list('car', args => first(args[0])),
+	seq(list('car', args => first(args[0]))),
 	seq(list('cdr', args => rest(args[0]))),
 	seq(list('cons', args => List.cons(args[0], args[1]))),
-	seq(list('nil?', args => isNil(args[0]))),
-	seq(list('true?', args => isTrue(args[0]))),
-	seq(list('false?', args => isFalse(args[0]))),
+	seq(list('nil?', args => (isNil(args[0]) && new LiteralToken('true')) || new LiteralToken('false'))),
+	seq(list('true?', args => (isTrue(args[0]) && new LiteralToken('true')) || new LiteralToken('false'))),
+	seq(list('false?', args => (isFalse(args[0]) && new LiteralToken('true')) || new LiteralToken('false'))),
 	seq(list('+', args => args.reduce((p,c)=>p+c, 0))),
 	seq(list('-', args => args.reduce((p,c)=>p-c))),
+	seq(list('=', args => ((args[0].value === args[1].value) && new LiteralToken('true')) || new LiteralToken('false'))),
 	seq(list('printline', args => args[0]))
-)));
+));
 
 export function setupEnvironment() {
-	let initialEnv = extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
-	defineVariable('true', true, initialEnv);
-	defineVariable('false', false, initialEnv);
-	return initialEnv;
+	return extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
 }
 
 function isPrimitiveProcedure(proc) {
@@ -429,12 +428,12 @@ function primitiveImplementation(proc) {
 	return first(rest(proc));
 }
 
-function primitiveProcedureNames() {
+export function primitiveProcedureNames() {
 	return map(first, primitiveProcedures);
 }
 
-function primitiveProcedureObjects() {
-	return map(proc => seq(list('primitive', first(rest(proc))), primitiveProcedures));
+export function primitiveProcedureObjects() {
+	return map(proc => seq(list('primitive', first(rest(proc)))), primitiveProcedures);
 }
 
 function applyPrimitiveProcedure(proc, args) {
