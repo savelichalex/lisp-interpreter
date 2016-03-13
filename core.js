@@ -5,11 +5,13 @@ import {
 	isVector,
 	list,
 	seq,
+	vector,
 	map,
 	conj,
 	count,
 	first,
-	rest
+	rest,
+	nth
 } from 'mori';
 
 import { cond } from './util';
@@ -48,8 +50,8 @@ function apply(procedure, args) {
         () => isCompoundProcedure(procedure), () => evalSequence(
                                                         procedureBody(procedure),
                                                         extendEnvironment(
-                                                            procedureParameters(procedure),
-                                                            List.arrayToList(args),
+                                                            map(v => v.value, procedureParameters(procedure)), //TODO: need change primitives to SymbolToken
+                                                            seq(args),
                                                             procedureEnvironment(procedure)
                                                         )
                                                     ),
@@ -57,17 +59,16 @@ function apply(procedure, args) {
     ]);
 }
 
-function listOfValues(exps, env, arr = []) {
+function listOfValues(exps, env, arr = vector()) {
     if(isNoOperands(exps)) {
         return arr;
     } else {
-        arr.push(_eval(firstOperand(exps), env));
+        arr = conj(arr, _eval(firstOperand(exps), env));
         return listOfValues(restOperand(exps), env, arr);
     }
 }
 
 function evalIf(exp, env) {
-	// console.log(exp, _eval(ifPredicate(exp), env), isTrue(_eval(ifPredicate(exp), env)));
 	const resultInPredicate = _eval(ifPredicate(exp), env);
     if(isFalse(resultInPredicate) || isNil(resultInPredicate)) {
         return _eval(ifAlternative(exp), env);
@@ -407,12 +408,12 @@ const primitiveProcedures = seq(list(
 	seq(list('car', args => first(args[0]))),
 	seq(list('cdr', args => rest(args[0]))),
 	seq(list('cons', args => List.cons(args[0], args[1]))),
-	seq(list('nil?', args => (isNil(args[0]) && new LiteralToken('true')) || new LiteralToken('false'))),
-	seq(list('true?', args => (isTrue(args[0]) && new LiteralToken('true')) || new LiteralToken('false'))),
-	seq(list('false?', args => (isFalse(args[0]) && new LiteralToken('true')) || new LiteralToken('false'))),
+	seq(list('nil?', args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'))),
+	seq(list('true?', args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'))),
+	seq(list('false?', args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'))),
 	seq(list('+', args => args.reduce((p,c)=>p+c, 0))),
 	seq(list('-', args => args.reduce((p,c)=>p-c))),
-	seq(list('=', args => ((args[0].value === args[1].value) && new LiteralToken('true')) || new LiteralToken('false'))),
+	seq(list('=', args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'))),
 	seq(list('printline', args => args[0]))
 ));
 

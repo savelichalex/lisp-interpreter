@@ -106,7 +106,24 @@ describe('Clojure interpreter', () => {
 
 				expect(first(truePredicate)).to.equal('primitive');
 			});
-		})
+		});
+		
+		describe('Lambda', () => {
+			it('should eval fn statement in procedure', () => {
+				const ast = syntaxer('(fn [a] a)');
+				const lambda = _eval(first(ast));
+				
+				expect(first(lambda)).to.equal('procedure');
+			});
+
+			it('should eval and then apply to arguments', () => {
+				const ast = syntaxer('((fn [a] a) 1)');
+				const result = _eval(first(ast), setupEnvironment());
+				
+				expect(result).to.be.instanceOf(NumberToken);
+				expect(result.value).to.equal(1);
+			});
+		});
 	});
 
 	describe('Setup environment', () => {
