@@ -133,6 +133,24 @@ describe('Clojure interpreter', () => {
 				expect(result).to.be.instanceOf(StringToken);
 				expect(result.value).to.equal('yes');
 			});
+			
+			it('should eval function definition', () => {
+				const ast = syntaxer('(do (def a (fn [a] a)) (if (= (a 1) 1) "yes" :else "no"))');
+				const result = _eval(first(ast), setupEnvironment());
+
+				expect(result).to.be.instanceOf(StringToken);
+				expect(result.value).to.equal('yes');
+			});
+		});
+		
+		describe('Assignment', () => {
+			it('should set variable', () => {
+				const ast = syntaxer('(do (def a 1) (set! a 2) (if (= a 2) "yes" :else "no"))');
+				const result = _eval(first(ast), setupEnvironment());
+
+				expect(result).to.be.instanceOf(StringToken);
+				expect(result.value).to.equal('yes');
+			});
 		});
 	});
 

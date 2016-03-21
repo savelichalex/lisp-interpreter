@@ -372,20 +372,19 @@ function lookupVariableValue(variable, env) {
 	return envLoop(env);
 }
 
-function setVariableValue(variable, value, env) { //TODO: fix it
+function setVariableValue(variable, value, env) {
 	function envLoop(env) {
-		function scan(vars, vals) {
+		function scan(frame) {
 			return cond([
-				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === first(vars), () => List.setCar(vals, value),
-				() => true, () => scan(rest(vars), rest(vals))
+				() => isEmptyFrame(frame), () => envLoop(enclosingEnvironment(env)),
+				() => frame[variable.value], () => addBindingToFrame(variable.value, value, frame),
+				() => true, () => envLoop(enclosingEnvironment(env))
 			])
 		}
-		if(isEmptyFrame(env)) {
+		if(count(env) === 0) {
 			throw new Error('Unbound variable', variable);
 		} else {
-			let frame = firstFrame(env);
-			return scan(frameVariables(frame), frameValues(frame));
+			return scan(firstFrame(env));
 		}
 	}
 	return envLoop(env);
