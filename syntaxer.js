@@ -102,14 +102,18 @@ function* tokenizerGenerator(input) {
 				break;
 			case /\)/.test(char):
 				if(!string && !comment) {
-					yield makeToken(currentToken);
+					if(currentToken !== '') {
+						yield makeToken(currentToken);
+					}
 					yield {type: LIST_CLOSE};
 					currentToken = '';
 				}
 				break;
 			case /]/.test(char):
 				if(!string && !comment) {
-					yield makeToken(currentToken);
+					if(currentToken !== '') {
+						yield makeToken(currentToken);
+					}
 					yield {type: VECTOR_CLOSE};
 					currentToken = '';
 				}

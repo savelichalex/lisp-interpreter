@@ -11,7 +11,11 @@ import {
 	count,
 	first,
 	rest,
-	nth
+	nth,
+	cons,
+	reduceKV,
+	zipmap,
+	toJs
 } from 'mori';
 
 import { cond } from './util';
@@ -31,7 +35,7 @@ import {
 export function _eval(exp, env) {
     return cond([
         () => isSelfEvaluating(exp), () => exp,
-        () => isVariable(exp), () => lookupVariableValue(exp, env),
+        () => isVariable(exp), () => lookupVariableValue(exp.value, env),
         () => isQuoted(exp), () => textOfQuotation(exp),
         () => isAssignment(exp), () => evalAssignment(exp, env),
         () => isDefinition(exp), () => evalDefinition(exp, env),
@@ -196,7 +200,7 @@ function makeIf(predicate, consequent, alternative) {
 }
 
 function isBegin(exp) {
-	return isTaggedList(exp, 'begin'); //in clojure this is `do`
+	return isTaggedList(exp, 'do'); //in clojure this is `do`
 }
 
 function beginActions(exp) {
@@ -216,7 +220,7 @@ function restExps(seq) {
 }
 
 function makeBegin(s) {
-	return seq(list('begin', s));
+	return seq(list('do', s));
 }
 
 function sequenceToExp(seq) {
@@ -316,18 +320,18 @@ function firstFrame(env) {
 	return first(env);
 }
 
-const theEmptyEnvironment = list();
+const theEmptyEnvironment = {};
 
-function isEmptyList(l) {
-	return count(l) === 0;
+function isEmptyFrame(l) {
+	return Object.keys(l).length === 0;
 }
 
 function makeFrame(variables, values) {
-	return seq(list(variables, values));
+	return reduceKV((prev, key, val) => (prev[key] = val) && prev, {}, zipmap(variables, values));
 }
 
 function frameVariables(frame) {
-	return first(frame);
+	return seq(Object.keys(frame)); //TODO: delete it when fix assignment
 }
 
 function frameValues(frame) {
@@ -335,8 +339,7 @@ function frameValues(frame) {
 }
 
 function addBindingToFrame(variable, value, frame) {
-	List.setCar(frame, seq(list(variable, first(frame))));
-	List.setCdr(frame, seq(list(value, rest(frame)))); //TODO: check it
+	frame[variable] = value;
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
@@ -352,26 +355,24 @@ function extendEnvironment(vars, vals, baseEnv) {
 }
 
 function lookupVariableValue(variable, env) {
-	variable = variable.value;
 	function envLoop(env) {
-		function scan(vars, vals) {
+		function scan(frame) {
 			return cond([
-				() => isEmptyList(vars), () => envLoop(enclosingEnvironment(env)),
-				() => variable === first(vars), () => first(vals),
-				() => true, () => scan(rest(vars), rest(vals))
+				() => isEmptyFrame(frame), () => envLoop(enclosingEnvironment(env)),
+				() => frame[variable] !== void 0, () => frame[variable],
+				() => true, () => envLoop(enclosingEnvironment(env))
 			])
 		}
-		if(isEmptyList(env)) {
+		if(count(env) === 0) { //when env list is empty (when search variable, give rest of env and lookup again)
 			throw new Error('Unbound variable', variable);
 		} else {
-			let frame = firstFrame(env);
-			return scan(frameVariables(frame), frameValues(frame));
+			return scan(firstFrame(env));
 		}
 	}
 	return envLoop(env);
 }
 
-function setVariableValue(variable, value, env) {
+function setVariableValue(variable, value, env) { //TODO: fix it
 	function envLoop(env) {
 		function scan(vars, vals) {
 			return cond([
@@ -380,7 +381,7 @@ function setVariableValue(variable, value, env) {
 				() => true, () => scan(rest(vars), rest(vals))
 			])
 		}
-		if(isEmptyList(env)) {
+		if(isEmptyFrame(env)) {
 			throw new Error('Unbound variable', variable);
 		} else {
 			let frame = firstFrame(env);
@@ -391,31 +392,23 @@ function setVariableValue(variable, value, env) {
 }
 
 function defineVariable(variable, value, env) {
-	let frame = firstFrame(env);
-	function scan(vars, vals) {
-		return cond([
-			() => vars === null, () => addBindingToFrame(variable, value, frame),
-			() => variable === first(vars), () => List.setCar(vals, value),
-			() => true, () => scan(rest(vars), rest(vals))
-		]);
-	}
-	return scan(frameVariables(frame), frameValues(frame));
+	addBindingToFrame(variable.value, value, firstFrame(env));
 }
 
 //
 
-const primitiveProcedures = seq(list(
-	seq(list('car', args => first(args[0]))),
-	seq(list('cdr', args => rest(args[0]))),
-	seq(list('cons', args => List.cons(args[0], args[1]))),
-	seq(list('nil?', args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'))),
-	seq(list('true?', args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'))),
-	seq(list('false?', args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'))),
-	seq(list('+', args => args.reduce((p,c)=>p+c, 0))),
-	seq(list('-', args => args.reduce((p,c)=>p-c))),
-	seq(list('=', args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'))),
-	seq(list('printline', args => args[0]))
-));
+const primitiveProcedures = {
+	'car': args => first(args[0]),
+	'cdr': args => rest(args[0]),
+	'cons': args => List.cons(args[0], args[1]),
+	'nil?': args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
+	'true?': args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
+	'false?': args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
+	'+': args => args.reduce((p,c)=>p+c, 0),
+	'-': args => args.reduce((p,c)=>p-c),
+	'=': args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'),
+	'println': args => console.log(args)
+};
 
 export function setupEnvironment() {
 	return extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
@@ -430,11 +423,11 @@ function primitiveImplementation(proc) {
 }
 
 export function primitiveProcedureNames() {
-	return map(first, primitiveProcedures);
+	return seq(Object.keys(primitiveProcedures));
 }
 
 export function primitiveProcedureObjects() {
-	return map(proc => seq(list('primitive', first(rest(proc)))), primitiveProcedures);
+	return map(proc => seq(list('primitive', proc)), map(variable => primitiveProcedures[variable], primitiveProcedureNames()));
 }
 
 function applyPrimitiveProcedure(proc, args) {

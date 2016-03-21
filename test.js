@@ -124,6 +124,16 @@ describe('Clojure interpreter', () => {
 				expect(result.value).to.equal(1);
 			});
 		});
+		
+		describe('Definition', () => {
+			it('should eval simple definition of primitive value', () => {
+				const ast = syntaxer('(do (def a 1) (if (= a 1) "yes" :else "no"))');
+				const result = _eval(first(ast), setupEnvironment());
+
+				expect(result).to.be.instanceOf(StringToken);
+				expect(result.value).to.equal('yes');
+			});
+		});
 	});
 
 	describe('Setup environment', () => {
@@ -131,7 +141,7 @@ describe('Clojure interpreter', () => {
 			expect(
 				toJs(primitiveProcedureNames())
 			).to.deep.equal(
-				["car", "cdr", "cons", "nil?", "true?", "false?", "+", "-", "=", "printline"]
+				["car", "cdr", "cons", "nil?", "true?", "false?", "+", "-", "=", "println"]
 			);
 		});
 		
