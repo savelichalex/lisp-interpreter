@@ -4,7 +4,8 @@
   "description": "Lisp interpreter written on JavaScript",
   "main": "./interpretator.js",
   "scripts": {
-    "test": "mocha --require babel-core/register test.js"
+    "test": "mocha --require babel-core/register test.js",
+    "repl": "babel-node repl.js"
   },
   "repository": {
     "type": "git",

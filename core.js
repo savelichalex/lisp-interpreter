@@ -13,6 +13,7 @@ import {
 	rest,
 	nth,
 	cons,
+	reduce,
 	reduceKV,
 	zipmap,
 	toJs
@@ -44,7 +45,7 @@ export function _eval(exp, env) {
         () => isBegin(exp), () => evalSequence(beginActions(exp), env),
         () => isCond(exp), () => _eval(condToIf(exp), env),
         () => isApplication(exp), () => apply(_eval(operator(exp), env), listOfValues(operands(exp), env)),
-        () => true, () => {throw new Error('Eval: Unknown expression' + exp)}
+        () => true, () => {throw new Error('Eval: Unknown expression ' + exp)}
     ]);
 }
 
@@ -96,7 +97,12 @@ function evalAssignment(exp, env) {
 }
 
 function evalDefinition(exp, env) {
-    defineVariable(definitionVariable(exp), _eval(definitionValue(exp), env), env);
+	const value = definitionValue(exp);
+	if(isLambda(value)) {
+		defineVariable(definitionVariable(exp), value, env);
+	} else {
+        defineVariable(definitionVariable(exp), _eval(value, env), env);
+	}
     return 'ok';
 }
 
@@ -152,11 +158,11 @@ function isDefinition(exp) {
 }
 
 function definitionVariable(exp) {
-	return isSymbol(first(rest(exp))) ? first(rest(exp)) : first(first(rest(exp)));
+	return first(rest(exp));
 }
 
 function definitionValue(exp) {
-	return isSymbol(first(rest(exp))) ? first(rest(rest(exp))) : makeLambda(rest(first(rest(exp))), rest(rest(exp)));
+	return first(rest(rest(exp)));
 }
 
 function isLambda(exp) {
@@ -172,7 +178,7 @@ function lambdaBody(exp) {
 }
 
 function makeLambda(parameters, body) {
-	return seq(list('fn', seq(list((parameters, body)))));
+	return seq(cons('fn', seq(list(parameters, body))));
 }
 
 function isIf(exp) {
@@ -219,16 +225,8 @@ function restExps(seq) {
 	return rest(seq);
 }
 
-function makeBegin(s) {
-	return seq(list('do', s));
-}
-
-function sequenceToExp(seq) {
-	return cond([
-		() => count(seq) === 0, () => seq,
-		() => isLastExp(seq), () => firstExp(seq),
-		() => true, () => makeBegin(seq)
-	]);
+export function makeBegin(s) {
+	return seq(cons('do', s));
 }
 
 function isApplication(exp) {
@@ -330,14 +328,6 @@ function makeFrame(variables, values) {
 	return reduceKV((prev, key, val) => (prev[key] = val) && prev, {}, zipmap(variables, values));
 }
 
-function frameVariables(frame) {
-	return seq(Object.keys(frame)); //TODO: delete it when fix assignment
-}
-
-function frameValues(frame) {
-	return first(rest(frame));
-}
-
 function addBindingToFrame(variable, value, frame) {
 	frame[variable] = value;
 }
@@ -364,7 +354,7 @@ function lookupVariableValue(variable, env) {
 			])
 		}
 		if(count(env) === 0) { //when env list is empty (when search variable, give rest of env and lookup again)
-			throw new Error('Unbound variable', variable);
+			throw new Error('Unbound variable ' + variable);
 		} else {
 			return scan(firstFrame(env));
 		}
@@ -382,7 +372,7 @@ function setVariableValue(variable, value, env) {
 			])
 		}
 		if(count(env) === 0) {
-			throw new Error('Unbound variable', variable);
+			throw new Error('Unbound variable ' + variable);
 		} else {
 			return scan(firstFrame(env));
 		}
@@ -403,8 +393,8 @@ const primitiveProcedures = {
 	'nil?': args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
 	'true?': args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
 	'false?': args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
-	'+': args => args.reduce((p,c)=>p+c, 0),
-	'-': args => args.reduce((p,c)=>p-c),
+	'+': args => reduce((p,c)=>p+c.value, 0, args),
+	'-': args => reduce((p,c)=> p.value ? p.value-c.value : p - c.value, args),
 	'=': args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'),
 	'println': args => console.log(args)
 };

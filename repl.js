@@ -17,7 +17,7 @@ console.log('Clojure interpretator written on JavaScript');
 console.log(inputPrompt);
 rl.on('line', line => {
 	const res = interpretate(line);
-	console.log(outputPrompt, res[res.length ? res.length - 1 : 0]);
+	console.log(outputPrompt, res);
 	console.log(inputPrompt);
 }).on('close', () => {
 	console.log('REPL closing.');

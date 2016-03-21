@@ -4,10 +4,10 @@ import { syntaxer } from './syntaxer';
 
 import { map } from 'mori';
 
-import { _eval, setupEnvironment } from './core';
+import { _eval, setupEnvironment, makeBegin } from './core';
 
 const globalEnvironment = setupEnvironment();
 
 export function interpretate(input) {
-	return map(proc => _eval(proc, globalEnvironment), syntaxer(input));
+	return _eval(makeBegin(syntaxer(input)), globalEnvironment);
 }
