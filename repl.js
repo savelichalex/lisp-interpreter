@@ -16,9 +16,15 @@ const rl = readline.createInterface({
 console.log('Clojure interpretator written on JavaScript');
 console.log(inputPrompt);
 rl.on('line', line => {
-	const res = interpretate(line);
-	console.log(outputPrompt, res);
-	console.log(inputPrompt);
+	try {
+		const res = interpretate(line);
+		console.log(outputPrompt, res);
+		console.log(inputPrompt);
+	} catch (e) {
+		console.log(e.message);
+		console.log(e.stack);
+		console.log(inputPrompt);
+	}
 }).on('close', () => {
 	console.log('REPL closing.');
 	process.exit(0);

@@ -97,12 +97,7 @@ function evalAssignment(exp, env) {
 }
 
 function evalDefinition(exp, env) {
-	const value = definitionValue(exp);
-	if(isLambda(value)) {
-		defineVariable(definitionVariable(exp), value, env);
-	} else {
-        defineVariable(definitionVariable(exp), _eval(value, env), env);
-	}
+	defineVariable(definitionVariable(exp), _eval(definitionValue(exp), env), env);
     return 'ok';
 }
 
@@ -334,7 +329,7 @@ function addBindingToFrame(variable, value, frame) {
 
 function extendEnvironment(vars, vals, baseEnv) {
 	if(count(vars) === count(vals)) {
-		return seq(list(makeFrame(vars, vals), baseEnv));
+		return seq(cons(makeFrame(vars, vals), baseEnv));
 	} else {
 		if(count(vars) < count(vals)) {
 			throw new Error('Given little count of arguments', vars, vals);
@@ -400,7 +395,7 @@ const primitiveProcedures = {
 };
 
 export function setupEnvironment() {
-	return extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
+	return extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), list(theEmptyEnvironment));
 }
 
 function isPrimitiveProcedure(proc) {
