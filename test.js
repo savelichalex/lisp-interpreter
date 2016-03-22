@@ -135,7 +135,7 @@ describe('Clojure interpreter', () => {
 			});
 			
 			it('should eval function definition', () => {
-				const ast = syntaxer('(do (def a (fn [a] a)) (if (= (a 1) 1) "yes" :else "no"))');
+				const ast = syntaxer('(do (defn a [a] a) (if (= (a 1) 1) "yes" :else "no"))');
 				const result = _eval(first(ast), setupEnvironment());
 
 				expect(result).to.be.instanceOf(StringToken);

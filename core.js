@@ -41,6 +41,7 @@ export function _eval(exp, env) {
         () => isQuoted(exp), () => textOfQuotation(exp),
         () => isAssignment(exp), () => evalAssignment(exp, env),
         () => isDefinition(exp), () => evalDefinition(exp, env),
+	    () => isFunctionDefinition(exp), () => _eval(defnToDef(exp), env),
         () => isIf(exp), () => evalIf(exp, env),
         () => isLambda(exp), () => makeProcedure(lambdaParameters(exp), lambdaBody(exp), env),
         () => isBegin(exp), () => evalSequence(beginActions(exp), env),
@@ -153,6 +154,26 @@ function isDefinition(exp) {
 	return isTaggedList(exp, 'def');
 }
 
+function isFunctionDefinition(exp) {
+	return isTaggedList(exp, 'defn');
+}
+
+function defnVariable(exp) {
+	return first(rest(exp));
+}
+
+function defnParameters(exp) {
+	return first(rest(rest(exp)));
+}
+
+function defnBody(exp) {
+	return rest(rest(rest(exp)));
+}
+
+function defnToDef(exp) {
+	return seq(list('def', defnVariable(exp), makeLambda(defnParameters(exp), defnBody(exp))));
+}
+
 function definitionVariable(exp) {
 	return first(rest(exp));
 }
@@ -174,7 +195,7 @@ function lambdaBody(exp) {
 }
 
 function makeLambda(parameters, body) {
-	return seq(cons('fn', seq(list(parameters, body))));
+	return seq(cons('fn', seq(cons(parameters, body))));
 }
 
 function isIf(exp) {
@@ -389,10 +410,10 @@ const primitiveProcedures = {
 	'nil?': args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
 	'true?': args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
 	'false?': args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
-	'+': args => new NumberToken(reduce((p,c)=>p+c.value, 0, args)),
+	'+': args => new NumberToken(reduce((p,c)=>p.value ? p.value+c.value : p+c.value, args)),
 	'-': args => new NumberToken(reduce((p,c)=> p.value ? p.value-c.value : p - c.value, args)),
 	'=': args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'),
-	'println': args => console.log(args)
+	'println': args => !console.log(args) && new LiteralToken('nil')
 };
 
 export function setupEnvironment() {
