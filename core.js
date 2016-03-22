@@ -30,7 +30,8 @@ import {
 	isTrue,
 	isFalse,
 	isNil,
-	LiteralToken
+	LiteralToken,
+	NumberToken
 } from './types';
 
 export function _eval(exp, env) {
@@ -388,8 +389,8 @@ const primitiveProcedures = {
 	'nil?': args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
 	'true?': args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
 	'false?': args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
-	'+': args => reduce((p,c)=>p+c.value, 0, args),
-	'-': args => reduce((p,c)=> p.value ? p.value-c.value : p - c.value, args),
+	'+': args => new NumberToken(reduce((p,c)=>p+c.value, 0, args)),
+	'-': args => new NumberToken(reduce((p,c)=> p.value ? p.value-c.value : p - c.value, args)),
 	'=': args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'),
 	'println': args => console.log(args)
 };
