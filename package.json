@@ -4,7 +4,8 @@
   "description": "Lisp interpreter written on JavaScript",
   "main": "./interpretator.js",
   "scripts": {
-    "test": "mocha test"
+    "test": "mocha --require babel-core/register test.js",
+    "repl": "babel-node repl.js"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,13 @@
   },
   "homepage": "https://github.com/savelichalex/lisp-interpreter#readme",
   "devDependencies": {
-    "babel-preset-es2015-node5": "^1.1.1"
+    "babel-cli": "^6.6.5",
+    "babel-core": "^6.6.5",
+    "babel-preset-es2015-node5": "^1.1.1",
+    "chai": "^3.5.0",
+    "mocha": "^2.4.5"
+  },
+  "dependencies": {
+    "mori": "^0.3.2"
   }
 }

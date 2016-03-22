@@ -1,35 +1,64 @@
 'use strict';
 
-import * as List from './list';
+import {
+	isSeq,
+	isVector,
+	list,
+	seq,
+	vector,
+	map,
+	conj,
+	count,
+	first,
+	rest,
+	nth,
+	cons,
+	reduce,
+	reduceKV,
+	zipmap,
+	toJs
+} from 'mori';
 
 import { cond } from './util';
 
+import {
+	isSymbol,
+	isNumber,
+	isString,
+	isKeyword,
+	isLiteral,
+	isTrue,
+	isFalse,
+	isNil,
+	LiteralToken,
+	NumberToken
+} from './types';
+
 export function _eval(exp, env) {
-	//console.log(exp);
     return cond([
         () => isSelfEvaluating(exp), () => exp,
-        () => isVariable(exp), () => lookupVariableValue(exp, env),
+        () => isVariable(exp), () => lookupVariableValue(exp.value, env),
         () => isQuoted(exp), () => textOfQuotation(exp),
         () => isAssignment(exp), () => evalAssignment(exp, env),
         () => isDefinition(exp), () => evalDefinition(exp, env),
+	    () => isFunctionDefinition(exp), () => _eval(defnToDef(exp), env),
         () => isIf(exp), () => evalIf(exp, env),
         () => isLambda(exp), () => makeProcedure(lambdaParameters(exp), lambdaBody(exp), env),
         () => isBegin(exp), () => evalSequence(beginActions(exp), env),
         () => isCond(exp), () => _eval(condToIf(exp), env),
         () => isApplication(exp), () => apply(_eval(operator(exp), env), listOfValues(operands(exp), env)),
-        () => true, () => {throw new Error('Eval: Unknown expression' + exp)}
+        () => true, () => {throw new Error('Eval: Unknown expression ' + exp)}
     ]);
 }
 
 function apply(procedure, args) {
-	//console.log(procedure, args);
     return cond([
         () => isPrimitiveProcedure(procedure), () => applyPrimitiveProcedure(procedure, args),
         () => isCompoundProcedure(procedure), () => evalSequence(
                                                         procedureBody(procedure),
                                                         extendEnvironment(
-                                                            procedureParameters(procedure),
-                                                            List.arrayToList(args),
+                                                            map(v => v.value, procedureParameters(procedure)), //TODO: need change primitives to SymbolToken
+                                                            seq(args),
                                                             procedureEnvironment(procedure)
                                                         )
                                                     ),
@@ -37,20 +66,21 @@ function apply(procedure, args) {
     ]);
 }
 
-function listOfValues(exps, env, arr = []) {
+function listOfValues(exps, env, arr = vector()) {
     if(isNoOperands(exps)) {
         return arr;
     } else {
-        arr.push(_eval(firstOperand(exps), env));
+        arr = conj(arr, _eval(firstOperand(exps), env));
         return listOfValues(restOperand(exps), env, arr);
     }
 }
 
 function evalIf(exp, env) {
-    if(isTrue(_eval(ifPredicate(exp), env))) {
-        return _eval(ifConsequent(exp), env);
-    } else {
+	const resultInPredicate = _eval(ifPredicate(exp), env);
+    if(isFalse(resultInPredicate) || isNil(resultInPredicate)) {
         return _eval(ifAlternative(exp), env);
+    } else {
+	    return _eval(ifConsequent(exp), env);
     }
 }
 
@@ -69,32 +99,23 @@ function evalAssignment(exp, env) {
 }
 
 function evalDefinition(exp, env) {
-    defineVariable(definitionVariable(exp), _eval(definitionValue(exp), env), env);
+	defineVariable(definitionVariable(exp), _eval(definitionValue(exp), env), env);
     return 'ok';
 }
 
 function isSelfEvaluating(exp) {
     return cond([
         () => isNumber(exp), () => true,
-        //() => isString(exp), () => true,
+        () => isString(exp), () => true,
+	    () => isKeyword(exp), () => true,
+	    () => isLiteral(exp), () => true,
+	    () => isVector(exp), () => true,
         () => true, () => false
     ]);
 }
 
-function isNumber(exp) {
-    return typeof exp === 'number';
-}
-
-function isString() {
-    return typeof exp === 'string'; //TODO: check strings in lisp
-}
-
 function isVariable(exp) {
     return isSymbol(exp);
-}
-
-function isSymbol(exp) {
-    return typeof exp === 'string';
 }
 
 function isQuoted(exp) {
@@ -102,12 +123,15 @@ function isQuoted(exp) {
 }
 
 function textOfQuotation(exp) {
-    return List.car(List.cdr(exp));
+    return first(rest(exp));
 }
 
 function isTaggedList(exp, tag) {
-    if(List.isPair(exp)) {
-        if(List.car(exp) === tag) {
+    if(isSeq(exp)) {
+	    const f = first(exp);
+	    if(isSymbol(f) && f.value === tag) {
+		    return true;
+	    } else if(f === tag) {
             return true;
         }
     }
@@ -119,39 +143,59 @@ function isAssignment(exp) {
 }
 
 function assignmentVariable(exp) {
-	return List.car(List.cdr(exp));
+	return first(rest(exp));
 }
 
 function assignmentValue(exp) {
-	return List.car(List.cdr(List.cdr(exp)));
+	return first(rest(rest(exp)));
 }
 
 function isDefinition(exp) {
-	return isTaggedList(exp, 'define');
+	return isTaggedList(exp, 'def');
+}
+
+function isFunctionDefinition(exp) {
+	return isTaggedList(exp, 'defn');
+}
+
+function defnVariable(exp) {
+	return first(rest(exp));
+}
+
+function defnParameters(exp) {
+	return first(rest(rest(exp)));
+}
+
+function defnBody(exp) {
+	return rest(rest(rest(exp)));
+}
+
+function defnToDef(exp) {
+	return seq(list('def', defnVariable(exp), makeLambda(defnParameters(exp), defnBody(exp))));
 }
 
 function definitionVariable(exp) {
-	return isSymbol(List.car(List.cdr(exp))) ? List.car(List.cdr(exp)) : List.car(List.car(List.cdr(exp)));
+	return first(rest(exp));
 }
 
 function definitionValue(exp) {
-	return isSymbol(List.car(List.cdr(exp))) ? List.car(List.cdr(List.cdr(exp))) : makeLambda(List.cdr(List.car(List.cdr(exp))), List.cdr(List.cdr(exp)));
+	return first(rest(rest(exp)));
 }
 
 function isLambda(exp) {
-	return isTaggedList(exp, 'lambda');
+	return isTaggedList(exp, 'fn');
 }
 
 function lambdaParameters(exp) {
-	return List.car(List.cdr(exp));
+	return first(rest(exp));
 }
 
 function lambdaBody(exp) {
-	return List.cdr(List.cdr(exp));
+	return rest(rest(exp));
 }
 
 function makeLambda(parameters, body) {
-	return List.cons('lambda', List.cons(parameters, body));
+	return seq(cons('fn', seq(cons(parameters, body))));
 }
 
 function isIf(exp) {
@@ -159,79 +203,71 @@ function isIf(exp) {
 }
 
 function ifPredicate(exp) {
-	return List.car(List.cdr(exp));
+	return first(rest(exp));
 }
 
 function ifConsequent(exp) {
-	return List.car(List.cdr(List.cdr(exp)));
+	return first(rest(rest(exp)));
 }
 
 function ifAlternative(exp) {
-	if(List.cdr(List.cdr(List.cdr(exp))) !== null) {
-		return List.car(List.cdr(List.cdr(List.cdr(exp))));
+	if(rest(rest(rest(exp))) !== null) {
+		return first(rest(rest(rest(exp))));
 	} else {
-		return 'false';
+		return new LiteralToken('false');
 	}
 }
 
 function makeIf(predicate, consequent, alternative) {
-	return List.list('if', predicate, consequent, alternative);
+	return seq(list('if', predicate, consequent, alternative));
 }
 
 function isBegin(exp) {
-	return isTaggedList(exp, 'begin');
+	return isTaggedList(exp, 'do'); //in clojure this is `do`
 }
 
 function beginActions(exp) {
-	return List.cdr(exp);
+	return rest(exp);
 }
 
 function isLastExp(seq) {
-	return List.cdr(seq) === null;
+	return count(rest(seq)) === 0;
 }
 
 function firstExp(seq) {
-	return List.car(seq);
+	return first(seq);
 }
 
 function restExps(seq) {
-	return List.cdr(seq);
+	return rest(seq);
 }
 
-function makeBegin(seq) {
-	return List.cons('begin', seq);
-}
-
-function sequenceToExp(seq) {
-	return cond([
-		() => seq === null, () => seq,
-		() => isLastExp(seq), () => firstExp(seq),
-		() => true, () => makeBegin(seq)
-	]);
+export function makeBegin(s) {
+	return seq(cons('do', s));
 }
 
 function isApplication(exp) {
-	return List.isPair(exp);
+	return isSeq(exp);
 }
 
 function operator(exp) {
-	return List.car(exp);
+	return first(exp);
 }
 
 function operands(exp) {
-	return List.cdr(exp);
+	return rest(exp);
 }
 
 function isNoOperands(ops) {
-	return ops === null;
+	return count(ops) === 0;
 }
 
 function firstOperand(ops) {
-	return List.car(ops);
+	return first(ops);
 }
 
 function restOperand(ops) {
-	return List.cdr(ops);
+	return rest(ops);
 }
 
 function isCond(exp) {
@@ -239,19 +275,11 @@ function isCond(exp) {
 }
 
 function condClauses(exp) {
-	return List.cdr(exp);
+	return rest(exp);
 }
 
 function isCondElseClause(clause) {
-	return condPredicate(clause) === 'else';
-}
-
-function condPredicate(clause) {
-	return List.car(clause);
-}
-
-function condActions(clause) {
-	return List.cdr(clause);
+	return isKeyword(clause) && (clause.value === 'else');
 }
 
 function condToIf(exp) {
@@ -259,37 +287,25 @@ function condToIf(exp) {
 }
 
 function expandClauses(clauses) {
-	if(clauses === null) {
-		return 'false';
+	if(count(clauses) === 0) {
+		return new LiteralToken('false');
 	} else {
-		let first = List.car(clauses);
-		let rest = List.cdr(clauses);
-		if(isCondElseClause(first)) {
-			if(rest === null) {
-				return sequenceToExp(condActions(first))
+		let predicate = first(clauses);
+		let cons = rest(clauses);
+		if(isCondElseClause(predicate)) {
+			if(count(cons) === 1) {
+				return first(cons);
 			} else {
 				throw new Error('COND->IF: Else clause not last', clauses);
 			}
 		} else {
-			return makeIf(condPredicate(first), sequenceToExp(condActions(first)), expandClauses(rest));
+			return makeIf(predicate, first(cons), expandClauses(rest(cons)));
 		}
 	}
 }
 
-function isTrue(x) {
-	return x === true; //TODO: make it for lisp rules
-}
-
-function isFalse(x) {
-	return x === false; //TODO: make it for lisp rules
-}
-
-function isNull(x) {
-	return x === null;
-}
-
 function makeProcedure(parameters, body, env) {
-	return List.list('procedure', parameters, body, env);
+	return seq(list('procedure', parameters, body, env));
 }
 
 function isCompoundProcedure(p) {
@@ -297,56 +313,47 @@ function isCompoundProcedure(p) {
 }
 
 function procedureParameters(p) {
-	return List.car(List.cdr(p));
+	return first(rest(p));
 }
 
 function procedureBody(p) {
-	return List.car(List.cdr(List.cdr(p)));
+	return first(rest(rest(p)));
 }
 
 function procedureEnvironment(p) {
-	return List.car(List.cdr(List.cdr(List.cdr(p))));
+	return first(rest(rest(rest(p))));
 }
 
 
 //Environment
 
 function enclosingEnvironment(env) {
-	return List.cdr(env);
+	return rest(env);
 }
 
 function firstFrame(env) {
-	return List.car(env);
+	return first(env);
 }
 
-const theEmptyEnvironment = List.cons(null, null);
+const theEmptyEnvironment = {};
 
-function isEmptyList(l) {
-	return l.toString() === '[cons]' && List.car(l) === null && List.cdr(l) === null;
+function isEmptyFrame(l) {
+	return Object.keys(l).length === 0;
 }
 
 function makeFrame(variables, values) {
-	return List.cons(variables, values);
-}
-
-function frameVariables(frame) {
-	return List.car(frame);
-}
-
-function frameValues(frame) {
-	return List.cdr(frame);
+	return reduceKV((prev, key, val) => (prev[key] = val) && prev, {}, zipmap(variables, values));
 }
 
 function addBindingToFrame(variable, value, frame) {
-	List.setCar(frame, List.cons(variable, List.car(frame)));
-	List.setCdr(frame, List.cons(value, List.cdr(frame)));
+	frame[variable] = value;
 }
 
 function extendEnvironment(vars, vals, baseEnv) {
-	if(List.listLength(vars) === List.listLength(vals)) {
-		return List.cons(makeFrame(vars, vals), baseEnv);
+	if(count(vars) === count(vals)) {
+		return seq(cons(makeFrame(vars, vals), baseEnv));
 	} else {
-		if(List.listLength(vars) < List.listLength(vals)) {
+		if(count(vars) < count(vals)) {
 			throw new Error('Given little count of arguments', vars, vals);
 		} else {
 			throw new Error('Given too much arguments', vars, vals);
@@ -356,18 +363,17 @@ function extendEnvironment(vars, vals, baseEnv) {
 
 function lookupVariableValue(variable, env) {
 	function envLoop(env) {
-		function scan(vars, vals) {
+		function scan(frame) {
 			return cond([
-				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === List.car(vars), () => List.car(vals),
-				() => true, () => scan(List.cdr(vars), List.cdr(vals))
+				() => isEmptyFrame(frame), () => envLoop(enclosingEnvironment(env)),
+				() => frame[variable] !== void 0, () => frame[variable],
+				() => true, () => envLoop(enclosingEnvironment(env))
 			])
 		}
-		if(isEmptyList(env)) {
-			throw new Error('Unbound variable', variable);
+		if(count(env) === 0) { //when env list is empty (when search variable, give rest of env and lookup again)
+			throw new Error('Unbound variable ' + variable);
 		} else {
-			let frame = firstFrame(env);
-			return scan(frameVariables(frame), frameValues(frame));
+			return scan(firstFrame(env));
 		}
 	}
 	return envLoop(env);
@@ -375,54 +381,43 @@ function lookupVariableValue(variable, env) {
 
 function setVariableValue(variable, value, env) {
 	function envLoop(env) {
-		function scan(vars, vals) {
+		function scan(frame) {
 			return cond([
-				() => vars === null, () => envLoop(enclosingEnvironment(env)),
-				() => variable === List.car(vars), () => List.setCar(vals, value),
-				() => true, () => scan(List.cdr(vars), List.cdr(vals))
+				() => isEmptyFrame(frame), () => envLoop(enclosingEnvironment(env)),
+				() => frame[variable.value], () => addBindingToFrame(variable.value, value, frame),
+				() => true, () => envLoop(enclosingEnvironment(env))
 			])
 		}
-		if(isEmptyList(env)) {
-			throw new Error('Unbound variable', variable);
+		if(count(env) === 0) {
+			throw new Error('Unbound variable ' + variable);
 		} else {
-			let frame = firstFrame(env);
-			return scan(frameVariables(frame), frameValues(frame));
+			return scan(firstFrame(env));
 		}
 	}
 	return envLoop(env);
 }
 
 function defineVariable(variable, value, env) {
-	let frame = firstFrame(env);
-	function scan(vars, vals) {
-		return cond([
-			() => vars === null, () => addBindingToFrame(variable, value, frame),
-			() => variable === List.car(vars), () => List.setCar(vals, value),
-			() => true, () => scan(List.cdr(vars), List.cdr(vals))
-		]);
-	}
-	return scan(frameVariables(frame), frameValues(frame));
+	addBindingToFrame(variable.value, value, firstFrame(env));
 }
 
 //
 
-const primitiveProcedures = List.list(
-	List.list('car', args => List.car(args[0])),
-	List.list('cdr', args => List.cdr(args[0])),
-	List.list('cons', args => List.cons(args[0], args[1])),
-	List.list('null?', args => isNull(args[0])),
-	List.list('true?', args => isTrue(args[0])),
-	List.list('false?', args => isFalse(args[0])),
-	List.list('+', args => args.reduce((p,c)=>p+c, 0)),
-	List.list('-', args => args.reduce((p,c)=>p-c)),
-	List.list('printline', args => args[0])
-);
+const primitiveProcedures = {
+	'car': args => first(args[0]),
+	'cdr': args => rest(args[0]),
+	'cons': args => List.cons(args[0], args[1]),
+	'nil?': args => (isNil(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
+	'true?': args => (isTrue(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
+	'false?': args => (isFalse(nth(args, 0)) && new LiteralToken('true')) || new LiteralToken('false'),
+	'+': args => new NumberToken(reduce((p,c)=>p.value ? p.value+c.value : p+c.value, args)),
+	'-': args => new NumberToken(reduce((p,c)=> p.value ? p.value-c.value : p - c.value, args)),
+	'=': args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'),
+	'println': args => !console.log(args) && new LiteralToken('nil')
+};
 
 export function setupEnvironment() {
-	let initialEnv = extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), theEmptyEnvironment);
-	defineVariable('true', true, initialEnv);
-	defineVariable('false', false, initialEnv);
-	return initialEnv;
+	return extendEnvironment(primitiveProcedureNames(), primitiveProcedureObjects(), list(theEmptyEnvironment));
 }
 
 function isPrimitiveProcedure(proc) {
@@ -430,15 +425,15 @@ function isPrimitiveProcedure(proc) {
 }
 
 function primitiveImplementation(proc) {
-	return List.car(List.cdr(proc));
+	return first(rest(proc));
 }
 
-function primitiveProcedureNames() {
-	return List.map(List.car, primitiveProcedures);
+export function primitiveProcedureNames() {
+	return seq(Object.keys(primitiveProcedures));
 }
 
-function primitiveProcedureObjects() {
-	return List.map(proc => List.list('primitive', List.car(List.cdr(proc))), primitiveProcedures);
+export function primitiveProcedureObjects() {
+	return map(proc => seq(list('primitive', proc)), map(variable => primitiveProcedures[variable], primitiveProcedureNames()));
 }
 
 function applyPrimitiveProcedure(proc, args) {
