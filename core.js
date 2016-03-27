@@ -31,7 +31,8 @@ import {
 	isFalse,
 	isNil,
 	LiteralToken,
-	NumberToken
+	NumberToken,
+	StringToken
 } from './types';
 
 export function _eval(exp, env) {
@@ -413,7 +414,9 @@ const primitiveProcedures = {
 	'+': args => new NumberToken(reduce((p,c)=>p.value ? p.value+c.value : p+c.value, args)),
 	'-': args => new NumberToken(reduce((p,c)=> p.value ? p.value-c.value : p - c.value, args)),
 	'=': args => ((nth(args, 0).value === nth(args, 1).value) && new LiteralToken('true')) || new LiteralToken('false'),
-	'println': args => !console.log(args) && new LiteralToken('nil')
+	'println': args => !console.log(args) && new LiteralToken('nil'),
+	'str': args => new StringToken(reduce((p,c)=>p.value ? p.value+c.value : p+c.value, args)),
+	'conj': args => conj(first(args), first(rest(args)))
 };
 
 export function setupEnvironment() {
